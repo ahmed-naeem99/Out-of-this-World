@@ -3,9 +3,13 @@ import pandas as pd
 from geopy.distance import geodesic
 from datetime import datetime, timedelta
 
-# Define time and distance thresholds for validation
-TIME_WINDOW_MINUTES = 60
-DISTANCE_THRESHOLD_KM = 1.0
+# Thresholds for each sensor family
+THRESHOLDS = {
+    'viirs':   {'time': 60,    'dist': 1.0},
+    'modis':   {'time': 60,    'dist': 2.0},
+    'landsat': {'time': 1440,  'dist': 0.5},
+    'goes':    {'time': 30,    'dist': 2.0}
+}
 
 # Convert acquisition date and time to datetime object
 def combine_datetime(acq_date, acq_time):
@@ -19,43 +23,57 @@ def load_detections(db_path, table):
     df['datetime'] = df.apply(lambda row: combine_datetime(row['acq_date'], row['acq_time']), axis=1)
     return df
 
-# Check if any matching detection exists in another dataset
-def validate_detection(fire, other_df):
+# Pick thresholds by table name
+def get_thresholds(table):
+    if table.startswith('viirs'):
+        fam = 'viirs'
+    elif table.startswith('modis'):
+        fam = 'modis'
+    elif table.startswith('landsat'):
+        fam = 'landsat'
+    elif table.startswith('goes'):
+        fam = 'goes'
+    else:
+        fam = 'viirs'
+    t = THRESHOLDS[fam]
+    return t['time'], t['dist']
+
+# Check match in another dataset
+def validate_detection(fire, other_df, time_window, dist_thresh):
     for _, row in other_df.iterrows():
-        time_diff = abs((fire['datetime'] - row['datetime']).total_seconds()) / 60
-        if time_diff <= TIME_WINDOW_MINUTES:
-            dist = geodesic((fire['latitude'], fire['longitude']), (row['latitude'], row['longitude'])).km
-            if dist <= DISTANCE_THRESHOLD_KM:
+        if abs((fire['datetime'] - row['datetime']).total_seconds()) / 60 <= time_window:
+            if geodesic((fire['latitude'], fire['longitude']),
+                        (row['latitude'], row['longitude'])).km <= dist_thresh:
                 return True
     return False
 
 
-# Run validation for all detections from the primary sensor
+# Validate detections from primary sensor
 def validate_fires(primary_db, primary_table, secondary_sources):
     primary_df = load_detections(primary_db, primary_table)
-    validated_alerts = []
+    validated = []
 
-    # Load secondary detections
-    secondary_dfs = [(src, load_detections(*src)) for src in secondary_sources]
+    secondary_dfs = [((db, tbl), load_detections(db, tbl)) for db, tbl in secondary_sources]
 
     for _, fire in primary_df.iterrows():
-        for source, df in secondary_dfs:
-            if validate_detection(fire, df):
-                validated_alerts.append(fire)
-                break  # Only need one match to confirm
+        for (db, tbl), df in secondary_dfs:
+            tw, dt = get_thresholds(tbl)
+            if validate_detection(fire, df, tw, dt):
+                validated.append(fire)
+                break
 
-    validated_df = pd.DataFrame(validated_alerts)
-    print(f"Validated {len(validated_df)} out of {len(primary_df)} detections.")
-    validated_df.to_csv("validated_fires.csv", index=False)
+    pd.DataFrame(validated).to_csv("validated_fires.csv", index=False)
+    print(f"Validated {len(validated)} of {len(primary_df)} detections.")
 
-
-    # Usage
+# Usage
 if __name__ == "__main__":
     primary = ("viirs.db", "viirs_noaa20")
     secondary = [
-        ("modis.db", "modis_data"),
-        ("viirs.db", "viirs_snpp"),
-        ("viirs.db", "viirs_noaa21")
+        ("modis.db",   "modis_data"),
+        ("viirs.db",   "viirs_snpp"),
+        ("viirs.db",   "viirs_noaa21"),
+        ("landsat.db", "landsat_data"),   # added
+        ("goes.db",    "goes_data")       # added
     ]
 
     validate_fires(primary[0], primary[1], secondary)
