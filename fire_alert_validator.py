@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 
 # Thresholds for each sensor family
 THRESHOLDS = {
-    'viirs':   {'time': 60,    'dist': 1.0},
-    'modis':   {'time': 60,    'dist': 2.0},
-    'landsat': {'time': 1440,  'dist': 0.5},
-    'goes':    {'time': 30,    'dist': 2.0}
+    'viirs':   {'time': 360,    'dist': 5.0},
+    'modis':   {'time': 180,    'dist': 3.0},
+    'landsat': {'time': 4320,  'dist': 1.0},
+    'goes':    {'time': 15,    'dist': 10.0}
 }
 
 # Convert acquisition date and time to datetime object
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         ("modis.db",   "modis_data"),
         ("viirs.db",   "viirs_snpp"),
         ("viirs.db",   "viirs_noaa21"),
-        ("landsat.db", "landsat_data"),   # added
+        #("landsat.db", "landsat_data"),   # added
         ("goes.db",    "goes_data")       # added
     ]
 
