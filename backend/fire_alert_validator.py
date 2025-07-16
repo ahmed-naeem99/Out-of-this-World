@@ -25,22 +25,30 @@ def load_detections(db, table):
 
 # Map table to family
 def get_thresholds(table):
-    if table.startswith('viirs'):   fam = 'viirs'
+    if table.startswith('viirs'): fam = 'viirs'
     elif table.startswith('modis'): fam = 'modis'
     elif table.startswith('landsat'): fam = 'landsat'
-    elif table.startswith('goes'):  fam = 'goes'
+    elif table.startswith('goes'): fam = 'goes'
     else: fam = 'viirs'
     t = THRESHOLDS[fam]
     return t['time'], t['dist']
 
 # Find a matching record and return it
-def find_match(fire, other_df, time_window, dist_thresh):
-    for _, row in other_df.iterrows():
-        if abs((fire['datetime'] - row['datetime']).total_seconds()) / 60 <= time_window:
-            if geodesic((fire['latitude'], fire['longitude']),
-                        (row['latitude'], row['longitude'])).km <= dist_thresh:
-                return row
-    return None
+def find_matches(fire, all_secondary_data):
+    matches = []
+    for (db, tbl), df in all_secondary_data:
+        tw, dt = get_thresholds(tbl)
+        for _, row in df.iterrows():
+            if abs((fire['datetime'] - row['datetime']).total_seconds()) / 60 <= tw:
+                if geodesic((fire['latitude'], fire['longitude']),
+                            (row['latitude'], row['longitude'])).km <= dt:
+                    matches.append((tbl, row))
+                    break
+    return matches
+
+# Send alert (for now, just print it)
+def send_alert(fire_id, alert_level):
+    print(f"ALERT: Fire ID {fire_id} is LEVEL {alert_level}")
 
 # Validate detections and save comparison columns
 def validate_fires(primary_db, primary_table, secondary_sources):
@@ -49,20 +57,22 @@ def validate_fires(primary_db, primary_table, secondary_sources):
 
     secondary_dfs = [((db, tbl), load_detections(db, tbl)) for db, tbl in secondary_sources]
 
-    for _, fire in primary_df.iterrows():
-        for (db, tbl), df in secondary_dfs:
-            tw, dt = get_thresholds(tbl)
-            match = find_match(fire, df, tw, dt)
-            if match is not None:
-                merged = fire.to_dict()
-                merged['matched_sensor'] = tbl
-                for col in match.index:
-                    merged[f"{col}_match"] = match[col]
-                out_rows.append(merged)
-                break
+    for idx, fire in primary_df.iterrows():
+        matches = find_matches(fire, secondary_dfs)
+        alert_level = len(matches)
+
+        if alert_level > 0:
+            merged = fire.to_dict()
+            merged['alert_level'] = alert_level
+            for sensor_name, match_row in matches:
+                merged[f"matched_sensor_{sensor_name}"] = sensor_name
+                for col in match_row.index:
+                    merged[f"{sensor_name}_{col}"] = match_row[col]
+            out_rows.append(merged)
+            send_alert(idx, alert_level)
 
     pd.DataFrame(out_rows).to_csv("validated_fires.csv", index=False)
-    print(f"Validated {len(out_rows)} of {len(primary_df)} detections.")
+    print(f"{len(out_rows)} fires validated out of {len(primary_df)} total.")
 
 # Usage
 if __name__ == "__main__":
