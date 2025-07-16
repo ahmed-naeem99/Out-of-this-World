@@ -47,8 +47,12 @@ def find_matches(fire, all_secondary_data):
     return matches
 
 # Send alert (for now, just print it)
-def send_alert(fire_id, alert_level):
-    print(f"ALERT: Fire ID {fire_id} is LEVEL {alert_level}")
+def send_alert(fire, level):
+    lat = fire['latitude']
+    lon = fire['longitude']
+    date = fire['acq_date']
+    time = fire['acq_time']
+    print(f"CONFIDENCE LEVEL {level}: Fire at ({lat}, {lon}) on {date} {time}")
 
 # Validate detections and save comparison columns
 def validate_fires(primary_db, primary_table, secondary_sources):
@@ -57,19 +61,19 @@ def validate_fires(primary_db, primary_table, secondary_sources):
 
     secondary_dfs = [((db, tbl), load_detections(db, tbl)) for db, tbl in secondary_sources]
 
-    for idx, fire in primary_df.iterrows():
+    for _, fire in primary_df.iterrows():
         matches = find_matches(fire, secondary_dfs)
-        alert_level = len(matches)
+        confidence_level = len(matches)
 
-        if alert_level > 0:
+        if confidence_level > 0:
             merged = fire.to_dict()
-            merged['alert_level'] = alert_level
+            merged['confidence_level'] = confidence_level
             for sensor_name, match_row in matches:
                 merged[f"matched_sensor_{sensor_name}"] = sensor_name
                 for col in match_row.index:
                     merged[f"{sensor_name}_{col}"] = match_row[col]
             out_rows.append(merged)
-            send_alert(idx, alert_level)
+            send_alert(fire, confidence_level)
 
     pd.DataFrame(out_rows).to_csv("validated_fires.csv", index=False)
     print(f"{len(out_rows)} fires validated out of {len(primary_df)} total.")
