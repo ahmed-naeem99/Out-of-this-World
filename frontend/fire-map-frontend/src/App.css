@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap');
 
 body, html, #root, .App {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Urbanist', sans-serif;
 }
 
 .navbar {
@@ -14,6 +14,7 @@ body, html, #root, .App {
   padding: 1rem 2rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   z-index: 1000;
   position: relative;
@@ -22,10 +23,101 @@ body, html, #root, .App {
 .logo {
   font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
+}
+
+.login-btn {
+  background-color: white;
+  color: #0F1154;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .main-map {
   height: calc(100% - 72px);
   width: 100%;
+  position: relative;
+}
+
+.side-menu {
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  right: 20px;
+  width: 18%;
+  background-color: white;
+  padding: 1.2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.side-menu h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.side-menu ul {
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+}
+
+.bottom-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 1000;
+}
+
+.floating-btn {
+  background-color: white;
+  color: #0F1154;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  border-radius: 30px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.floating-btn:hover {
+  background-color: #f0f0f0;
+  transform: scale(1.05);
+}
+
+/* Drawer style under button */
+.drawer-wrapper {
+  position: relative;
+}
+
+.drawer {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  min-width: 200px;
+  font-size: 0.95rem;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.drawer h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
