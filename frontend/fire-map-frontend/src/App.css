@@ -1,27 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap');
 
-body, html, #root, .App {
+* {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
+}
+
+body, html, #root, .App {
   height: 100%;
   width: 100%;
   font-family: 'Urbanist', sans-serif;
+  overflow: hidden;
 }
 
 .navbar {
+  height: 70px;
   background-color: #0F1154;
   color: white;
-  padding: 1rem 2rem;
+  padding: 0.6rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   z-index: 1000;
-  position: relative;
 }
 
 .logo {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
@@ -29,41 +34,16 @@ body, html, #root, .App {
   background-color: white;
   color: #0F1154;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.9rem;
   font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
 }
 
 .main-map {
-  height: calc(100% - 72px);
+  height: calc(100% - 70px); /* adjusted for thinner navbar */
   width: 100%;
   position: relative;
-}
-
-.side-menu {
-  position: absolute;
-  top: 20%;
-  bottom: 20%;
-  right: 20px;
-  width: 18%;
-  background-color: white;
-  padding: 1.2rem;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  z-index: 1000;
-  overflow-y: auto;
-}
-
-.side-menu h3 {
-  margin-top: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.side-menu ul {
-  padding-left: 1rem;
-  margin: 0.5rem 0;
 }
 
 .bottom-buttons {
@@ -93,7 +73,6 @@ body, html, #root, .App {
   transform: scale(1.05);
 }
 
-/* Drawer style under button */
 .drawer-wrapper {
   position: relative;
 }
@@ -114,7 +93,7 @@ body, html, #root, .App {
 }
 
 .drawer h4 {
-  margin: 0 0 0.5rem 0;
+  margin-bottom: 0.5rem;
 }
 
 @keyframes fadeIn {
