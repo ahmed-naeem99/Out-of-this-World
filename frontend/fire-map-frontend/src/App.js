@@ -28,22 +28,9 @@ function App() {
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution='&copy; OpenStreetMap'
           />
         </MapContainer>
-
-        {/* Floating full-height side panel */}
-        <div className="side-menu">
-          <h3>🛰 Active Sensors</h3>
-          <ul>
-            <li>MODIS</li>
-            <li>VIIRS (NOAA20, NOAA21, SNPP)</li>
-            <li>LANDSAT</li>
-            <li>GOES</li>
-          </ul>
-          <hr />
-          <p>Data updates every few hours based on NASA FIRMS.</p>
-        </div>
 
         {/* Floating buttons */}
         <div className="bottom-buttons">
