@@ -1,0 +1,75 @@
+.map-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: visible; /* 💡 This is the fix */
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+.fire-icon {
+  font-size: 1.5rem;
+  text-align: center;
+  line-height: 1.5rem;
+}
+
+.bottom-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.bottom-buttons button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.drawer {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fefefe;
+  border: 1px solid #ccc;
+  padding: 16px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  max-width: 300px;
+}
+
+.drawer h3 {
+  margin-top: 0;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.custom-popup .leaflet-popup-content {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  max-width: 250px;
+}
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}

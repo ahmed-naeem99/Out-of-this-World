@@ -1,102 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700&display=swap');
-
+/* Reset & base styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body, html, #root, .App {
+html,
+body,
+#root {
   height: 100%;
-  width: 100%;
-  font-family: 'Urbanist', sans-serif;
-  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f7f8fa;
+  overflow: hidden; /* Prevent scroll */
 }
 
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Navbar */
 .navbar {
-  height: 70px;
-  background-color: #0F1154;
+  height: 80px;
+  background-color: #0f1154;
   color: white;
-  padding: 0.6rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 25px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  z-index: 999;
+}
+
+.navbar-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 1000;
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
+/* Login Button - Upgraded */
 .login-btn {
-  background-color: white;
-  color: #0F1154;
+  background: linear-gradient(45deg, #ffd700, #ffcc00);
+  color: #0f1154;
   border: none;
-  padding: 0.4rem 0.9rem;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.main-map {
-  height: calc(100% - 70px); /* adjusted for thinner navbar */
-  width: 100%;
-  position: relative;
-}
-
-.bottom-buttons {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 1rem;
-  z-index: 1000;
-}
-
-.floating-btn {
-  background-color: white;
-  color: #0F1154;
-  border: none;
-  padding: 0.6rem 1rem;
-  font-weight: 600;
   border-radius: 30px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
 }
 
-.floating-btn:hover {
-  background-color: #f0f0f0;
+.login-btn:hover {
+  background: #fff;
+  color: #0f1154;
   transform: scale(1.05);
 }
 
-.drawer-wrapper {
+/* Map Container */
+.map-container {
+  flex: 1;
+  height: calc(100% - 80px); /* Adjust for navbar height */
   position: relative;
-}
-
-.drawer {
-  position: absolute;
-  bottom: 110%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-  min-width: 200px;
-  font-size: 0.95rem;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-.drawer h4 {
-  margin-bottom: 0.5rem;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateX(-50%) scale(0.95); }
-  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+  z-index: 1;
+  overflow: hidden;
 }
