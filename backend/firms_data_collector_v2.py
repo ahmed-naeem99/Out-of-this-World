@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 # Define all variables
 
 MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
-DAYS = str(5)  # Last n day of data from 1-10
+DAYS = str(2)  # Last n day of data from 1-10
 
 # Choose a study area i.e. Manitoba (-98.9,53.9,-96.3,55.1)
 BBOX = "-103.1,53.2,-100.5,55.9"  # Test area (lon_min,lat_min,lon_max,lat_max)
