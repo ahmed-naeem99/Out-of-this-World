@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 # Define all variables
 
 MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
-DAYS = str(2)  # Last n day of data from 1-10
+DAYS = str(1)  # Last n day of data from 1-10
 
 # Choose a study area i.e. Manitoba (-98.9,53.9,-96.3,55.1)
 BBOX = "-103.1,53.2,-100.5,55.9"  # Test area (lon_min,lat_min,lon_max,lat_max)
@@ -33,6 +33,7 @@ def initialize_db_modis():
             frp REAL,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -60,6 +61,7 @@ def initialize_db_viirs():
             frp REAL,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -81,6 +83,7 @@ def initialize_db_viirs():
             frp REAL,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -102,6 +105,7 @@ def initialize_db_viirs():
             frp REAL,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -126,6 +130,7 @@ def initialize_db_landsat():
             confidence TEXT,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -152,6 +157,7 @@ def initialize_db_goes():
             frp REAL,
             daynight TEXT,
             sensor TEXT,
+            acquired_at TEXT,
             PRIMARY KEY (latitude, longitude, acq_date, acq_time)
         )
     ''')
@@ -168,6 +174,7 @@ def fetch_firms(sensor, db_name, table_name):
     try:
         df = pd.read_csv(url)
         df['sensor'] = sensor
+        df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
         # Save to database
         con = sqlite3.connect(db_name)
@@ -190,6 +197,7 @@ def fetch_firms(sensor, db_name, table_name):
     except Exception as e:
         print(f"[{timestamp}] Error occurred: {e}")
 
+
 # db_init.py section
 def init_all_dbs():
     initialize_db_modis()
@@ -210,5 +218,3 @@ SENSORS = [
 # NAIN LOOP
 if __name__ == "__main__":
     init_all_dbs()
-    for sensor, db, table in SENSORS:
-        fetch_firms(sensor, db, table)
