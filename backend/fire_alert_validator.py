@@ -47,10 +47,30 @@ def find_matches(fire, all_secondary_data):
 def send_alert(fire, level):
     print(f"CONFIDENCE LEVEL {level}: Fire at ({fire['latitude']}, {fire['longitude']}) on {fire['acq_date']} at {fire['acq_time']}")
 
+def initialize_validated_db():
+    con = sqlite3.connect("validated_fires.db")
+    cur = con.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS validated_fires (
+            latitude REAL,
+            longitude REAL,
+            acq_date TEXT,
+            acq_time TEXT,
+            confidence_level INTEGER,
+            primary_sensor TEXT,
+            validating_sensors TEXT,
+            datetime TEXT,
+            PRIMARY KEY (latitude, longitude, acq_date, acq_time, primary_sensor)
+        )
+    ''')
+    con.commit()
+    con.close()
+
 def validate_fires(primary_db, primary_table, secondary_sources, since=None):
     primary_df = load_detections(primary_db, primary_table, since)
     secondary_dfs = [((db, tbl), load_detections(db, tbl, since)) for db, tbl in secondary_sources]
-    out_rows = []
+
+    validated = []  # list of dicts of fires that pass validation
 
     for _, fire in primary_df.iterrows():
         matches = find_matches(fire, secondary_dfs)
@@ -59,7 +79,30 @@ def validate_fires(primary_db, primary_table, secondary_sources, since=None):
         if confidence_level > 0:
             merged = fire.to_dict()
             merged['confidence_level'] = confidence_level
-            out_rows.append(merged)
+            merged['primary_sensor'] = primary_table
+            merged['validating_sensors'] = ','.join([m[0] for m in matches])
+            validated.append(merged)
             send_alert(fire, confidence_level)
 
-    return out_rows
+    # Insert validated fires into DB
+    con = sqlite3.connect("validated_fires.db")
+    cur = con.cursor()
+    for fire in validated:
+        cur.execute("""
+            INSERT OR IGNORE INTO validated_fires 
+            (latitude, longitude, acq_date, acq_time, confidence_level, primary_sensor, validating_sensors, datetime)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            fire['latitude'],
+            fire['longitude'],
+            fire['acq_date'],
+            fire['acq_time'],
+            fire['confidence_level'],
+            fire['primary_sensor'],
+            fire['validating_sensors'],
+            fire['datetime'].isoformat()
+        ))
+    con.commit()
+    con.close()
+
+    return validated

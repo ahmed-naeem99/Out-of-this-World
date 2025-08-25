@@ -1,5 +1,5 @@
 from firms_data_collector_v2 import init_all_dbs, fetch_firms, SENSORS
-from fire_alert_validator import validate_fires
+from fire_alert_validator import validate_fires, initialize_validated_db
 from datetime import datetime
 
 # Define which sensor is primary (used for alert validation) and secondary
@@ -14,6 +14,9 @@ SECONDARY = [
 
 def run_pipeline():
     print(f"--- Pipeline started at {datetime.utcnow().isoformat()} ---")
+    
+    # Ensure validated_fires DB exists
+    initialize_validated_db()
     
     # Step 1: Fetch new data
     init_all_dbs()
