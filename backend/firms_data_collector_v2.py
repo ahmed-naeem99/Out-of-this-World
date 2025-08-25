@@ -9,7 +9,7 @@ MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
 DAYS = str(1)  # Last n day of data from 1-10
 
 # Choose a study area i.e. Manitoba (-98.9,53.9,-96.3,55.1)
-BBOX = "-103.1,53.2,-100.5,55.9"  # Test area (lon_min,lat_min,lon_max,lat_max)
+BBOX = "-105.1,53.2,-100.5,60.9"  # Test area (lon_min,lat_min,lon_max,lat_max)
 
 # Database setup functions
 
@@ -178,6 +178,7 @@ def fetch_firms(sensor, db_name, table_name):
 
         # Save to database
         con = sqlite3.connect(db_name)
+        df = df.drop_duplicates(subset=['latitude','longitude','acq_date','acq_time'])
         df.to_sql(table_name, con, if_exists="append", index=False)
 
         # Remove duplicates
