@@ -1,17 +1,16 @@
-/* Reset & base styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
+html, body, #root, .App {
   height: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f7f8fa;
-  overflow: hidden; /* Prevent scroll */
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
 }
 
 .App {
@@ -20,49 +19,67 @@ body,
   height: 100%;
 }
 
-/* Navbar */
+/* Navbar Styles */
 .navbar {
-  height: 80px;
-  background-color: #0f1154;
+  height: 70px;
+  background: linear-gradient(90deg, #0F1154 0%, #1a1f7a 100%);
   color: white;
+  padding: 0 1.5rem;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 0 25px;
-  font-size: 1.8rem;
-  font-weight: 600;
-  z-index: 999;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
 }
 
-.navbar-title {
+.navbar-brand {
   display: flex;
-  align-items: center;
+  flex-direction: column;
 }
 
-/* Login Button - Upgraded */
+.logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.tagline {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
 .login-btn {
-  background: linear-gradient(45deg, #ffd700, #ffcc00);
-  color: #0f1154;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  color: #0F1154;
   border: none;
-  border-radius: 30px;
-  padding: 10px 20px;
-  font-weight: bold;
-  font-size: 1rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  border-radius: 20px;
+  cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .login-btn:hover {
-  background: #fff;
-  color: #0f1154;
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Map Container */
-.map-container {
+/* Main Content */
+.main-content {
   flex: 1;
-  height: calc(100% - 80px); /* Adjust for navbar height */
   position: relative;
-  z-index: 1;
-  overflow: hidden;
+  height: calc(100% - 70px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 1rem;
+  }
+  
+  .logo {
+    font-size: 1.3rem;
+  }
 }
