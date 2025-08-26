@@ -104,8 +104,8 @@ function MapComponent() {
       }
       
       filtered = filtered.filter(fire => {
-        if (!fire.date) return false;
-        const fireDate = new Date(fire.date);
+        if (!fire.datetime) return false;
+        const fireDate = new Date(fire.datetime);
         return fireDate >= cutoffDate;
       });
     }
@@ -125,7 +125,7 @@ function MapComponent() {
   }, [filters, fires]);
 
   // Helper function to calculate distance between coordinates
-  const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+  const getDistanceFromLatLonInKm = React.useCallback((lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
@@ -135,7 +135,7 @@ function MapComponent() {
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
     return R * c; // Distance in km
-  };
+  });
 
   const deg2rad = (deg) => {
     return deg * (Math.PI/180);
@@ -159,16 +159,16 @@ function MapComponent() {
   return (
     <div className="map-container">
       <MapContainer
-        center={[54.0, -102.0]}
-        zoom={4}
-        scrollWheelZoom={true}
-        minZoom={3}
-        maxBounds={[
-          [5, -170],
-          [80, -30],
-        ]}
-        maxBoundsViscosity={1.0}
+        center={[51.0447, -114.0719]}
+        zoom={6}
+        minZoom={2}
+        maxZoom={18}
         style={{ height: '100%', width: '100%' }}
+        preferCanvas={true}      // use canvas renderer for speed
+        zoomAnimation={true}
+        zoomAnimationThreshold={8}
+        markerZoomAnimation={true}
+        wheelPxPerZoomLevel={60} // smoother mousewheel zoom
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -187,8 +187,8 @@ function MapComponent() {
                 <p><strong>Latitude:</strong> {fire.latitude.toFixed(4)}</p>
                 <p><strong>Longitude:</strong> {fire.longitude.toFixed(4)}</p>
                 <p><strong>Confidence Level:</strong> {fire.confidence_level}/4</p>
-                <p><strong>Date Detected:</strong> {fire.date || 'Unknown'}</p>
-              </div>
+                <p><strong>Date Detected:</strong> {fire.datetime || 'Unknown'}</p>
+              </div>t
             </Popup>
           </Marker>
         ))}

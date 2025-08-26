@@ -21,7 +21,7 @@ const SidebarPanel = ({ filters, onFilterChange, fireCount, totalFireCount }) =>
 
   const handleTimeRangeChange = (range) => {
     onFilterChange({
-      ...fires,
+      ...filters,
       timeRange: range
     });
   };
