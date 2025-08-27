@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 from geopy.distance import geodesic
-from datetime import datetime
+from datetime import datetime, timedelta
 
 THRESHOLDS = {
     'viirs':   {'time': 360,   'dist': 5.0},
@@ -11,23 +11,37 @@ THRESHOLDS = {
 }
 
 def combine_datetime(acq_date, acq_time):
-    return datetime.strptime(f"{acq_date} {acq_time.zfill(4)}", "%Y-%m-%d %H%M")
+    """Combine date string and time integer into datetime object"""
+    # Convert time integer to zero-padded string
+    time_str = str(int(acq_time)).zfill(4)
+    return datetime.strptime(f"{acq_date} {time_str}", "%Y-%m-%d %H%M")
 
 def load_detections(db, table, since=None):
     con = sqlite3.connect(db)
     query = f"SELECT * FROM {table}"
+    if since:
+        # For SQL query filtering by date
+        since_date = since.strftime('%Y-%m-%d')
+        query += f" WHERE acq_date >= '{since_date}'"
+    
     df = pd.read_sql_query(query, con)
     con.close()
-    df['datetime'] = df.apply(lambda r: combine_datetime(r['acq_date'], r['acq_time']), axis=1)
-    if since:
-        df = df[df['datetime'] >= since]
+    
+    if not df.empty:
+        # Create datetime column
+        df['datetime'] = df.apply(lambda r: combine_datetime(r['acq_date'], r['acq_time']), axis=1)
+        
+        # Additional filtering by datetime if since parameter provided
+        if since:
+            df = df[df['datetime'] >= since]
+    
     return df
 
 def get_thresholds(table):
-    if table.startswith('viirs'): fam = 'viirs'
-    elif table.startswith('modis'): fam = 'modis'
-    elif table.startswith('landsat'): fam = 'landsat'
-    elif table.startswith('goes'): fam = 'goes'
+    if 'viirs' in table: fam = 'viirs'
+    elif 'modis' in table: fam = 'modis'
+    elif 'landsat' in table: fam = 'landsat'
+    elif 'goes' in table: fam = 'goes'
     else: fam = 'viirs'
     t = THRESHOLDS[fam]
     return t['time'], t['dist']
@@ -35,13 +49,18 @@ def get_thresholds(table):
 def find_matches(fire, all_secondary_data):
     matches = []
     for (db, tbl), df in all_secondary_data:
+        if df.empty:
+            continue
+            
         tw, dt = get_thresholds(tbl)
         for _, row in df.iterrows():
-            if abs((fire['datetime'] - row['datetime']).total_seconds()) / 60 <= tw:
-                if geodesic((fire['latitude'], fire['longitude']),
-                            (row['latitude'], row['longitude'])).km <= dt:
+            time_diff = abs((fire['datetime'] - row['datetime']).total_seconds()) / 60
+            if time_diff <= tw:
+                distance = geodesic((fire['latitude'], fire['longitude']),
+                                  (row['latitude'], row['longitude'])).km
+                if distance <= dt:
                     matches.append((tbl, row))
-                    break
+                    break  # Only need one match per sensor type
     return matches
 
 def send_alert(fire, level):
@@ -66,9 +85,24 @@ def initialize_validated_db():
     con.commit()
     con.close()
 
-def validate_fires(primary_db, primary_table, secondary_sources, since=None):
+def validate_fires(primary_db, primary_table, secondary_sources):
+    # Get data from last 24 hours
+    since = datetime.now() - timedelta(hours=24)
+    
     primary_df = load_detections(primary_db, primary_table, since)
-    secondary_dfs = [((db, tbl), load_detections(db, tbl, since)) for db, tbl in secondary_sources]
+    
+    if primary_df.empty:
+        print("No primary detections found in the last 24 hours")
+        return []
+    
+    # Load secondary data
+    secondary_dfs = []
+    for db, tbl in secondary_sources:
+        df = load_detections(db, tbl, since)
+        if not df.empty:
+            secondary_dfs.append(((db, tbl), df))
+        else:
+            print(f"No data found for secondary source: {tbl}")
 
     validated = []  # list of dicts of fires that pass validation
 
@@ -85,24 +119,28 @@ def validate_fires(primary_db, primary_table, secondary_sources, since=None):
             send_alert(fire, confidence_level)
 
     # Insert validated fires into DB
-    con = sqlite3.connect("validated_fires.db")
-    cur = con.cursor()
-    for fire in validated:
-        cur.execute("""
-            INSERT OR IGNORE INTO validated_fires 
-            (latitude, longitude, acq_date, acq_time, confidence_level, primary_sensor, validating_sensors, datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            fire['latitude'],
-            fire['longitude'],
-            fire['acq_date'],
-            fire['acq_time'],
-            fire['confidence_level'],
-            fire['primary_sensor'],
-            fire['validating_sensors'],
-            fire['datetime'].isoformat()
-        ))
-    con.commit()
-    con.close()
+    if validated:
+        con = sqlite3.connect("validated_fires.db")
+        cur = con.cursor()
+        for fire in validated:
+            cur.execute("""
+                INSERT OR IGNORE INTO validated_fires 
+                (latitude, longitude, acq_date, acq_time, confidence_level, primary_sensor, validating_sensors, datetime)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                fire['latitude'],
+                fire['longitude'],
+                fire['acq_date'],
+                str(fire['acq_time']),  # Ensure acq_time is string
+                fire['confidence_level'],
+                fire['primary_sensor'],
+                fire['validating_sensors'],
+                fire['datetime'].isoformat()
+            ))
+        con.commit()
+        con.close()
+        print(f"Inserted {len(validated)} validated fires into database")
+    else:
+        print("No validated fires found")
 
     return validated
