@@ -1,7 +1,14 @@
 import React from 'react';
 import './SidebarPanel.css';
 
-const SidebarPanel = ({ fireCount, totalFireCount }) => {
+const SidebarPanel = ({ 
+  fireCount, 
+  totalFireCount, 
+  confidenceFilters, 
+  toggleConfidenceFilter,
+  timeRange,
+  handleTimeRangeChange
+}) => {
   return (
     <div className="sidebar-panel">
       <div className="panel-header">
@@ -11,28 +18,45 @@ const SidebarPanel = ({ fireCount, totalFireCount }) => {
         </div>
       </div>
 
-      {/* Placeholder sections just for UI */}
       <div className="panel-section">
         <h3>Confidence Level</h3>
-        <p className="placeholder">Filter controls coming soon…</p>
+        <div className="confidence-filter">
+          {[1, 2, 3, 4].map(level => (
+            <div 
+              key={level}
+              className={`confidence-toggle ${confidenceFilters[level] ? 'active' : ''}`}
+              onClick={() => toggleConfidenceFilter(level)}
+            >
+              <div className={`confidence-dot level-${level}`}></div>
+              <span className="confidence-label">Level {level}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="panel-section">
         <h3>Time Range</h3>
-        <p className="placeholder">Time range filter coming soon…</p>
+        <div className="time-filter">
+          {[
+            { value: 'all', label: 'All Time' },
+            { value: '24h', label: 'Last 24h' },
+            { value: '7d', label: 'Last 7 Days' },
+            { value: '30d', label: 'Last 30 Days' }
+          ].map(option => (
+            <div 
+              key={option.value}
+              className={`time-option ${timeRange === option.value ? 'active' : ''}`}
+              onClick={() => handleTimeRangeChange(option.value)}
+            >
+              {option.label}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="panel-section">
         <h3>Area of Interest</h3>
         <p className="placeholder">AOI controls coming soon…</p>
-      </div>
-
-      <div className="panel-section">
-        <h3>Export Data</h3>
-        <p>Download current view data for analysis</p>
-        <button className="export-btn">
-          Export CSV
-        </button>
       </div>
     </div>
   );

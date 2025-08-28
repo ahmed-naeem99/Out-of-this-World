@@ -33,9 +33,19 @@ const createFireIcon = (confidence) => {
 };
 
 function MapComponent() {
-  const [fires, setFires] = useState([]);
+  const [allFires, setAllFires] = useState([]); // All fires from API
+  const [filteredFires, setFilteredFires] = useState([]); // Fires after filtering
   const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef();
+  
+  // Filter states
+  const [confidenceFilters, setConfidenceFilters] = useState({
+    1: true,
+    2: true,
+    3: true,
+    4: true
+  });
+  const [timeRange, setTimeRange] = useState('all'); // 'all', '24h', '7d', '30d'
 
   useEffect(() => {
     fetch('http://localhost:5000/api/fires')
@@ -47,10 +57,13 @@ function MapComponent() {
         const cleanedFires = fireData.map(fire => ({
           ...fire,
           lat: Number(fire.latitude),
-          lng: Number(fire.longitude)
+          lng: Number(fire.longitude),
+          // Convert date to timestamp for filtering
+          timestamp: new Date(fire.acq_date).getTime()
         })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
         
-        setFires(cleanedFires);
+        setAllFires(cleanedFires);
+        setFilteredFires(cleanedFires);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -58,6 +71,54 @@ function MapComponent() {
         setIsLoading(false);
       });
   }, []);
+
+  // Apply filters whenever filter states change
+  useEffect(() => {
+    if (allFires.length === 0) return;
+    
+    let filtered = [...allFires];
+    
+    // Apply confidence filters
+    const activeConfidenceLevels = Object.keys(confidenceFilters)
+      .filter(level => confidenceFilters[level])
+      .map(level => parseInt(level));
+    
+    if (activeConfidenceLevels.length > 0) {
+      filtered = filtered.filter(fire => 
+        activeConfidenceLevels.includes(fire.confidence_level)
+      );
+    }
+    
+    // Apply time filters
+    const now = new Date().getTime();
+    switch(timeRange) {
+      case '24h':
+        filtered = filtered.filter(fire => now - fire.timestamp <= 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        filtered = filtered.filter(fire => now - fire.timestamp <= 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        filtered = filtered.filter(fire => now - fire.timestamp <= 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        // 'all' - no time filter
+        break;
+    }
+    
+    setFilteredFires(filtered);
+  }, [allFires, confidenceFilters, timeRange]);
+
+  const toggleConfidenceFilter = (level) => {
+    setConfidenceFilters(prev => ({
+      ...prev,
+      [level]: !prev[level]
+    }));
+  };
+
+  const handleTimeRangeChange = (range) => {
+    setTimeRange(range);
+  };
 
   if (isLoading) {
     return (
@@ -83,7 +144,7 @@ function MapComponent() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
-        {fires.map((fire, index) => (
+        {filteredFires.map((fire, index) => (
           <Marker
             key={`${fire.lat}-${fire.lng}-${index}`}
             position={[fire.lat, fire.lng]}
@@ -102,10 +163,17 @@ function MapComponent() {
         ))}
       </MapContainer>
 
-      <SidebarPanel fireCount={fires.length} />
+      <SidebarPanel 
+        fireCount={filteredFires.length} 
+        totalFireCount={allFires.length}
+        confidenceFilters={confidenceFilters}
+        toggleConfidenceFilter={toggleConfidenceFilter}
+        timeRange={timeRange}
+        handleTimeRangeChange={handleTimeRangeChange}
+      />
 
       <div className="map-info-panel">
-        <strong>Fires: {fires.length}</strong>
+        <strong>Fires: {filteredFires.length}</strong>
       </div>
     </div>
   );
