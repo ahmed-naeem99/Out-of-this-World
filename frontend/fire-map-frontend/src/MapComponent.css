@@ -7,7 +7,8 @@
   bottom: 0;
   height: 100% !important;
   width: 100% !important;
-  overflow: hidden;
+  overflow: visible !important; /* This is the key fix */
+
 }
 
 /* This is the key fix - ensures Leaflet container takes full space */
