@@ -18,10 +18,11 @@ jobs:
       # Step 2: Download previous DB artifacts if they exist
       - name: Download previous DBs
         uses: actions/download-artifact@v4
+        
         with:
           name: db-files
           path: ./  # Downloads to repo root
-
+        continue-on-error: true
       # Step 3: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
