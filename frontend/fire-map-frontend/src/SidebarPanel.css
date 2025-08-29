@@ -1,24 +1,65 @@
-.sidebar-panel {
+.sidebar-wrapper {
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 320px;
-  height: calc(100% - 40px);
+  z-index: 1000;
+  overflow: visible;
+}
+
+.sidebar-panel {
+  width: 420px; 
+  min-height: 80px; /* Minimum height for collapsed state */
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   padding: 20px;
-  overflow-y: auto;
-  z-index: 1000;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transition: all 0.3s ease;
+  max-height: calc(100vh - 40px); /* Maximum height when expanded */
+}
+
+.sidebar-panel.collapsed {
+  height: auto; /* Allow it to shrink to content */
+  min-height: 80px; /* Keep the same minimum height */
+  overflow: hidden;
+  border-bottom: none; /* Add this */
+  transition: all 0.3s ease; /* Add transition here too */
+}
+
+.sidebar-panel.collapsed .panel-section {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.toggle-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 35px;
+  height: 32px;
+  background: white;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  z-index: 1001;
 }
 
 .panel-header {
   border-bottom: 1px solid #eee;
   padding-bottom: 15px;
+  padding-right: 40px; /* Space for toggle button */
+  min-height: 40px; /* Ensure header has consistent height */
 }
 
 .panel-header h2 {
@@ -33,8 +74,12 @@
 }
 
 .panel-section {
+  max-height: 300px;
+  transition: all 0.3s ease;
+  overflow: hidden;
   padding-bottom: 15px;
   border-bottom: 1px solid #f0f0f0;
+  will-change: transform, opacity;
 }
 
 .panel-section:last-child {
