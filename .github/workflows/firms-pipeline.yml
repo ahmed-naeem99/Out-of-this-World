@@ -1,53 +1,52 @@
 name: FIRMS Data Pipeline
 
-# Trigger every hour and allow manual run
 on:
   schedule:
-    - cron: "0 * * * *"  # runs at minute 0 of every hour
-  workflow_dispatch:
+    - cron: "0 * * * *"  # runs every hour
+  workflow_dispatch:       # allows manual trigger
 
 jobs:
   run-firms-pipeline:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repo
+      # Step 1: Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Step 2: Download previous DB artifacts if they exist
-      - name: Download previous DBs
-        uses: actions/download-artifact@v4
-        
-        with:
-          name: db-files
-          path: ./  # Downloads to repo root
-        continue-on-error: true
-      # Step 3: Set up Python
+      # Step 2: Install GitHub CLI for artifact fetching
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      # Step 3: Try restoring DB files from previous run
+      - name: Restore previous database files
+        run: |
+          echo "Trying to download DB files from previous run..."
+          gh run download $(gh run list --workflow firms-pipeline.yml --branch main --json databaseId --jq '.[1].databaseId') --name db-files --dir ./ || echo "No previous artifact found, starting fresh."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # Step 4: Install dependencies
+      # Step 5: Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      # Step 5: Run the FIRMS data pipeline
+      # Step 6: Run the FIRMS data pipeline
       - name: Run FIRMS Data Pipeline
         run: |
           python backend/data_pipeline.py
 
-      # Step 6: Upload updated DBs as artifacts
-      - name: Upload DBs as artifacts
+      # Step 7: Upload updated DB files as artifacts
+      - name: Upload DB files
         uses: actions/upload-artifact@v4
         with:
           name: db-files
           path: |
-            modis.db
-            viirs.db
-            landsat.db
-            goes.db
-            validated_fires.db
+            *.db
