@@ -80,5 +80,5 @@ def get_validated_fires():
     except sqlite3.Error as e:
         return jsonify({"error": f"Database error: {str(e)}"}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000)
+""" if __name__ == '__main__':
+    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000) """
