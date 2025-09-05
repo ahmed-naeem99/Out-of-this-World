@@ -8,7 +8,7 @@ SECONDARY = [
     ("modis.db", "modis_data"),
     ("viirs.db", "viirs_snpp"),
     ("viirs.db", "viirs_noaa21"),
-    #("landsat.db", "landsat_data"),
+    ("landsat.db", "landsat_data"),
     ("goes.db", "goes_data")
 ]
 
