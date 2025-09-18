@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Path to the database created by the pipeline
-VALIDATED_DB = "validated_fires.db"
+VALIDATED_DB = "/home/ubuntu/Out-of-this-World/validated_fires.db"
 
 @app.route('/')
 def home():

@@ -165,7 +165,6 @@ def initialize_db_goes():
     con.close()
 
 
-# Fetch and store FIRMS data without duplicates
 def fetch_firms(sensor, db_name, table_name):
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{sensor}/{BBOX}/{DAYS}"
@@ -176,28 +175,30 @@ def fetch_firms(sensor, db_name, table_name):
         df['sensor'] = sensor
         df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Save to database
         con = sqlite3.connect(db_name)
-        df = df.drop_duplicates(subset=['latitude','longitude','acq_date','acq_time'])
-        df.to_sql(table_name, con, if_exists="append", index=False)
+        cur = con.cursor()
 
-        # Remove duplicates
-        con.execute(f'''
-            DELETE FROM {table_name}
-            WHERE rowid NOT IN (
-                SELECT MIN(rowid)
-                FROM {table_name}
-                GROUP BY latitude, longitude, acq_date, acq_time
-            )
-        ''')
+        # Explicit insert with OR IGNORE
+        sql = f"""
+            INSERT OR IGNORE INTO {table_name} 
+            ({','.join(df.columns)})
+            VALUES ({','.join(['?'] * len(df.columns))})
+        """
+
+        for _, row in df.iterrows():
+            try:
+                cur.execute(sql, tuple(row))
+            except Exception as e:
+                print(f"Skipping row due to error: {e}")
+                skipped += 1
+
         con.commit()
         con.close()
 
-        print(f"[{timestamp}] {sensor} data saved successfully.")
+        print(f"[{timestamp}] {sensor} data saved successfully")
 
     except Exception as e:
         print(f"[{timestamp}] Error occurred: {e}")
-
 
 # db_init.py section
 def init_all_dbs():
