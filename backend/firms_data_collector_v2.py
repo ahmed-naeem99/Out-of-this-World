@@ -176,22 +176,27 @@ def fetch_firms(sensor, db_name, table_name):
         # Add sensor name
         df['sensor'] = sensor
 
-        df['acq_time'] = df['acq_time'].astype(str).str.zfill(4)  # pad to 4 digits (e.g. 956 -> 0956)
+        # Pad acq_time to 4 digits
+        df['acq_time'] = df['acq_time'].astype(str).str.zfill(4)
+
+        # Actual fire time from API
         df['acquired_at'] = pd.to_datetime(df['acq_date'] + ' ' + df['acq_time'], format="%Y-%m-%d %H%M")
 
+        # Cron fetch timestamp — ensures always append
+        df['fetched_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
         con = sqlite3.connect(db_name)
         cur = con.cursor()
 
-        # Explicitly match DB schema column order
+        # Match DB schema + new fetched_at column
         cols = [
             "latitude","longitude","bright_ti4","scan","track",
             "acq_date","acq_time","satellite","instrument",
             "confidence","version","bright_ti5","frp",
-            "daynight","sensor","acquired_at"
+            "daynight","sensor","acquired_at","fetched_at"
         ]
         sql = f"""
-            INSERT OR IGNORE INTO {table_name} 
+            INSERT INTO {table_name} 
             ({','.join(cols)})
             VALUES ({','.join(['?'] * len(cols))})
         """
