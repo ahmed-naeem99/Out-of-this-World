@@ -176,14 +176,9 @@ def fetch_firms(sensor, db_name, table_name):
         # Add sensor name
         df['sensor'] = sensor
 
-        # Build acquired_at properly from acq_date + acq_time
-        # FIRMS gives acq_time like 924 → make it "09:24"
-        df['acquired_at'] = df.apply(
-            lambda r: f"{r['acq_date']} "
-                      f"{str(r['acq_time']).zfill(4)[:2]}:"
-                      f"{str(r['acq_time']).zfill(4)[2:]}",
-            axis=1
-        )
+        df['acq_time'] = df['acq_time'].astype(str).str.zfill(4)  # pad to 4 digits (e.g. 956 -> 0956)
+        df['acquired_at'] = pd.to_datetime(df['acq_date'] + ' ' + df['acq_time'], format="%Y-%m-%d %H%M")
+
 
         con = sqlite3.connect(db_name)
         cur = con.cursor()
