@@ -51,7 +51,7 @@ function MapComponent() {
   const [timeRange, setTimeRange] = useState('all');
 
   useEffect(() => {
-    fetch('http://3.96.211.245:5000/api/fires')
+    fetch('http://35.182.187.24:5000/api/fires')
       .then((res) => {
         if (!res.ok) {
           throw new Error('Network response was not ok');
