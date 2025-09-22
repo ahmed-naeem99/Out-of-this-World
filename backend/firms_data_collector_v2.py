@@ -172,22 +172,40 @@ def fetch_firms(sensor, db_name, table_name):
 
     try:
         df = pd.read_csv(url)
+
+        # Add sensor name
         df['sensor'] = sensor
-        df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Build acquired_at properly from acq_date + acq_time
+        # FIRMS gives acq_time like 924 → make it "09:24"
+        df['acquired_at'] = df.apply(
+            lambda r: f"{r['acq_date']} "
+                      f"{str(r['acq_time']).zfill(4)[:2]}:"
+                      f"{str(r['acq_time']).zfill(4)[2:]}",
+            axis=1
+        )
 
         con = sqlite3.connect(db_name)
         cur = con.cursor()
 
-        # Explicit insert with OR IGNORE
+        # Explicitly match DB schema column order
+        cols = [
+            "latitude","longitude","bright_ti4","scan","track",
+            "acq_date","acq_time","satellite","instrument",
+            "confidence","version","bright_ti5","frp",
+            "daynight","sensor","acquired_at"
+        ]
         sql = f"""
             INSERT OR IGNORE INTO {table_name} 
-            ({','.join(df.columns)})
-            VALUES ({','.join(['?'] * len(df.columns))})
+            ({','.join(cols)})
+            VALUES ({','.join(['?'] * len(cols))})
         """
 
+        skipped = 0
         for _, row in df.iterrows():
             try:
-                cur.execute(sql, tuple(row))
+                values = [None if pd.isna(x) else x for x in row[cols]]
+                cur.execute(sql, tuple(values))
             except Exception as e:
                 print(f"Skipping row due to error: {e}")
                 skipped += 1
@@ -195,7 +213,7 @@ def fetch_firms(sensor, db_name, table_name):
         con.commit()
         con.close()
 
-        print(f"[{timestamp}] {sensor} data saved successfully")
+        print(f"[{timestamp}] {sensor} data saved successfully (skipped {skipped})")
 
     except Exception as e:
         print(f"[{timestamp}] Error occurred: {e}")
