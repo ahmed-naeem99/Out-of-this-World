@@ -165,6 +165,7 @@ def initialize_db_goes():
     con.close()
 
 
+# Fetch and store FIRMS data without duplicates
 def fetch_firms(sensor, db_name, table_name):
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{sensor}/{BBOX}/{DAYS}"
@@ -172,51 +173,31 @@ def fetch_firms(sensor, db_name, table_name):
 
     try:
         df = pd.read_csv(url)
-
-        # Add sensor name
         df['sensor'] = sensor
+        df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Pad acq_time to 4 digits
-        df['acq_time'] = df['acq_time'].astype(str).str.zfill(4)
-
-        # Actual fire time from API
-        df['acquired_at'] = pd.to_datetime(df['acq_date'] + ' ' + df['acq_time'], format="%Y-%m-%d %H%M")
-
-        # Cron fetch timestamp — ensures always append
-        df['fetched_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-
+        # Save to database
         con = sqlite3.connect(db_name)
-        cur = con.cursor()
+        df = df.drop_duplicates(subset=['latitude','longitude','acq_date','acq_time'])
+        df.to_sql(table_name, con, if_exists="append", index=False)
 
-        # Match DB schema + new fetched_at column
-        cols = [
-            "latitude","longitude","bright_ti4","scan","track",
-            "acq_date","acq_time","satellite","instrument",
-            "confidence","version","bright_ti5","frp",
-            "daynight","sensor","acquired_at","fetched_at"
-        ]
-        sql = f"""
-            INSERT INTO {table_name} 
-            ({','.join(cols)})
-            VALUES ({','.join(['?'] * len(cols))})
-        """
-
-        skipped = 0
-        for _, row in df.iterrows():
-            try:
-                values = [None if pd.isna(x) else x for x in row[cols]]
-                cur.execute(sql, tuple(values))
-            except Exception as e:
-                print(f"Skipping row due to error: {e}")
-                skipped += 1
-
+        # Remove duplicates
+        con.execute(f'''
+            DELETE FROM {table_name}
+            WHERE rowid NOT IN (
+                SELECT MIN(rowid)
+                FROM {table_name}
+                GROUP BY latitude, longitude, acq_date, acq_time
+            )
+        ''')
         con.commit()
         con.close()
 
-        print(f"[{timestamp}] {sensor} data saved successfully (skipped {skipped})")
+        print(f"[{timestamp}] {sensor} data saved successfully.")
 
     except Exception as e:
         print(f"[{timestamp}] Error occurred: {e}")
+
 
 # db_init.py section
 def init_all_dbs():
