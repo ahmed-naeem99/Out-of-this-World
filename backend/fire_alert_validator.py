@@ -18,24 +18,15 @@ def combine_datetime(acq_date, acq_time):
 
 def load_detections(db, table, since=None):
     con = sqlite3.connect(db)
-    query = f"SELECT * FROM {table}"
-    if since:
-        # For SQL query filtering by date
-        since_date = since.strftime('%Y-%m-%d')
-        query += f" WHERE acq_date >= '{since_date}'"
-    
-    df = pd.read_sql_query(query, con)
+    df = pd.read_sql_query(f"SELECT * FROM {table}", con)
     con.close()
-    
+
     if not df.empty:
-        # Create datetime column
         df['datetime'] = df.apply(lambda r: combine_datetime(r['acq_date'], r['acq_time']), axis=1)
-        
-        # Additional filtering by datetime if since parameter provided
         if since:
             df = df[df['datetime'] >= since]
-    
     return df
+
 
 def get_thresholds(table):
     if 'viirs' in table: fam = 'viirs'
