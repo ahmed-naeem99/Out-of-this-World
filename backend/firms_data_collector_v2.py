@@ -165,58 +165,84 @@ def initialize_db_goes():
     con.close()
 
 
+# =================================================================
+# vvvv THIS IS THE UPDATED FUNCTION vvvv
+# =================================================================
+
 def fetch_firms(sensor, db_name, table_name):
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{sensor}/{BBOX}/{DAYS}"
     print(f"[{timestamp}] Fetching {sensor} data")
+    
+    con = None  # Initialize con outside try block for finally clause
 
     try:
-        df = pd.read_csv(url)
+        # --- 1. FETCH DATA ---
+        # We force 'acq_time' to be a string (dtype)
+        # This prevents '0030' (00:30) from being read as the integer 30.
+        df = pd.read_csv(url, dtype={'acq_time': str})
+        
+        if df.empty:
+            print(f"[{timestamp}] No data downloaded from API for {sensor}.")
+            return
 
-        # Add sensor name
+        print(f"DEBUG: Downloaded {len(df)} records from API for {sensor}")
+        
+        # Add our custom columns
         df['sensor'] = sensor
+        df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Pad acq_time to 4 digits
-        df['acq_time'] = df['acq_time'].astype(str).str.zfill(4)
+        # Clean duplicates *within the downloaded file* just in case.
+        df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date', 'acq_time'])
+        print(f"DEBUG: After local dedupe, {len(df)} records remain for staging")
 
-        # Actual fire time from API
-        df['acquired_at'] = pd.to_datetime(df['acq_date'] + ' ' + df['acq_time'], format="%Y-%m-%d %H%M")
-
-        # Cron fetch timestamp — ensures always append
-        df['fetched_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-
+        # --- 2. SAVE TO DATABASE (The "Upsert" Pattern) ---
         con = sqlite3.connect(db_name)
-        cur = con.cursor()
+        
+        # Get count before
+        count_before = pd.read_sql_query(f"SELECT COUNT(*) as count FROM {table_name}", con)['count'][0]
+        print(f"DEBUG: Database has {count_before} records before insert")
 
-        # Match DB schema + new fetched_at column
-        cols = [
-            "latitude","longitude","bright_ti4","scan","track",
-            "acq_date","acq_time","satellite","instrument",
-            "confidence","version","bright_ti5","frp",
-            "daynight","sensor","acquired_at","fetched_at"
-        ]
-        sql = f"""
-            INSERT INTO {table_name} 
-            ({','.join(cols)})
-            VALUES ({','.join(['?'] * len(cols))})
-        """
+        # Get the columns from the DataFrame to ensure they match the SQL query
+        # This makes the code robust, as each sensor has different columns
+        all_columns = [f'"{col}"' for col in df.columns]
+        all_columns_str = ", ".join(all_columns)
+        
+        staging_table = f"staging_{table_name}" # A unique temp table name
 
-        skipped = 0
-        for _, row in df.iterrows():
-            try:
-                values = [None if pd.isna(x) else x for x in row[cols]]
-                cur.execute(sql, tuple(values))
-            except Exception as e:
-                print(f"Skipping row due to error: {e}")
-                skipped += 1
+        # Step A: Dump all new data into a temporary staging table.
+        # 'if_exists="replace"' makes this fast and clean.
+        df.to_sql(staging_table, con, if_exists="replace", index=False)
+
+        # Step B: Use "INSERT OR IGNORE" to copy from staging to main.
+        # The PRIMARY KEY you created will automatically and *very quickly*
+        # "ignore" any rows that are already in {table_name}.
+        con.execute(f'''
+            INSERT OR IGNORE INTO {table_name} ({all_columns_str})
+            SELECT {all_columns_str} FROM {staging_table}
+        ''')
+        
+        # Step C: Clean up the staging table
+        con.execute(f"DROP TABLE IF EXISTS {staging_table}")
 
         con.commit()
-        con.close()
 
-        print(f"[{timestamp}] {sensor} data saved successfully (skipped {skipped})")
+        # Get count after
+        count_after = pd.read_sql_query(f"SELECT COUNT(*) as count FROM {table_name}", con)['count'][0]
+        new_records = count_after - count_before
+        
+        print(f"DEBUG: Database now has {count_after} records total")
+        print(f"[{timestamp}] SUCCESS: Inserted {new_records} new records for {sensor}.")
 
+    except pd.errors.EmptyDataError:
+        print(f"[{timestamp}] No data returned from FIRMS API for {sensor}.")
     except Exception as e:
-        print(f"[{timestamp}] Error occurred: {e}")
+        print(f"[{timestamp}] ERROR processing {sensor}: {e}")
+        if con:
+            con.rollback()
+    finally:
+        if con:
+            con.close()
 
 # db_init.py section
 def init_all_dbs():
