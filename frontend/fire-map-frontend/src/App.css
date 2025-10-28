@@ -19,9 +19,9 @@ html, body, #root, .App {
   height: 100%;
 }
 
-/* Navbar Styles */
+/* Navbar */
 .navbar {
-  height: 70px;
+  height: 85px;
   background: linear-gradient(90deg, #0F1154 0%, #1a1f7a 100%);
   color: white;
   padding: 0 1.5rem;
@@ -29,15 +29,30 @@ html, body, #root, .App {
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
   z-index: 1000;
 }
 
 .navbar-brand {
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
-.logo {
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fire-icon {
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text {
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -46,9 +61,68 @@ html, body, #root, .App {
 .tagline {
   font-size: 0.75rem;
   opacity: 0.8;
-  margin-top: 2px;
+  margin-top: 6px;
 }
 
+/* Navbar Actions */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  position: relative;
+}
+
+/* Notification Button */
+.notif-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border-radius: 50%;
+}
+
+.notif-btn:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Notification Panel */
+.notif-panel {
+  position: absolute;
+  top: 60px;
+  right: 100px;
+  background: white;
+  color: #0F1154;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  width: 240px;
+  padding: 0.8rem;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.notif-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.notif-empty {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Login Button */
 .login-btn {
   background: linear-gradient(45deg, #FFD700, #FFA500);
   color: #0F1154;
@@ -73,13 +147,18 @@ html, body, #root, .App {
   height: calc(100% - 70px);
 }
 
-/* Responsive Design */
+/* Responsive */
 @media (max-width: 768px) {
   .navbar {
     padding: 0 1rem;
   }
   
-  .logo {
+  .logo-text {
     font-size: 1.3rem;
+  }
+
+  .notif-panel {
+    right: 80px;
+    width: 200px;
   }
 }
