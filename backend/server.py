@@ -1,13 +1,36 @@
+import os
+import sys
+import sqlite3
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
-import sqlite3
+from threading import Thread
+import traceback
+
+# --- Key Imports ---
+# Import the functions from your data_pipeline.py
+try:
+    from data_pipeline import run_pipeline, DEFAULT_BBOX
+except ImportError:
+    print("FATAL ERROR: Could not import from data_pipeline.py")
+    print("Make sure that file exists and has `run_pipeline` and `DEFAULT_BBOX`.")
+    sys.exit(1)
+
 
 app = Flask(__name__)
 CORS(app)
 
 # Path to the database created by the pipeline
+# This absolute path is perfect, we'll keep using it.
 VALIDATED_DB = "/home/ubuntu/Out-of-this-World/validated_fires.db"
+
+# This variable will track if the pipeline is already running
+is_pipeline_running = False
+
+
+# ===================================================================
+#  YOUR EXISTING ENDPOINTS (Unchanged)
+# ===================================================================
 
 @app.route('/')
 def home():
@@ -15,7 +38,8 @@ def home():
         "message": "Fire Detection API Server",
         "endpoints": {
             "/api/fires": "Get validated fire data",
-            "/api/status": "Check server status"
+            "/api/status": "Check server status",
+            "/api/run-pipeline": "POST to trigger a new data pull for an AOI"
         },
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
@@ -80,5 +104,65 @@ def get_validated_fires():
     except sqlite3.Error as e:
         return jsonify({"error": f"Database error: {str(e)}"}), 500
 
-""" if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000) """
+# ===================================================================
+#  NEW ENDPOINT TO TRIGGER THE PIPELINE
+# ===================================================================
+
+def run_pipeline_in_thread(bbox_str):
+    """
+    Wrapper function to run the pipeline in a separate thread
+    so the API request can return immediately.
+    """
+    global is_pipeline_running
+    is_pipeline_running = True
+    print(f"THREAD: Pipeline starting for BBOX: {bbox_str}...")
+    try:
+        # This calls the run_pipeline function from data_pipeline.py
+        run_pipeline(bbox_str=bbox_str)
+        print(f"THREAD: Pipeline finished successfully.")
+    except Exception as e:
+        print(f"THREAD: Pipeline FAILED.")
+        print(traceback.format_exc())
+    finally:
+        is_pipeline_running = False
+
+@app.route('/api/run-pipeline', methods=['POST'])
+def handle_run_pipeline():
+    """
+    This is the main API endpoint your frontend will call.
+    It accepts a new BBOX and triggers the pipeline.
+    """
+    global is_pipeline_running
+    
+    if is_pipeline_running:
+        # If it's already running, tell the user to wait.
+        return jsonify({"message": "Pipeline is already running. Please wait."}), 429 # 429: Too Many Requests
+
+    try:
+        data = request.get_json()
+        
+        # Get the BBOX from the request, or use the default if none is provided
+        bbox_str = data.get('bbox', DEFAULT_BBOX)
+        
+        # Run the pipeline in a background thread
+        pipeline_thread = Thread(target=run_pipeline_in_thread, args=(bbox_str,))
+        pipeline_thread.start()
+        
+        # Return an "Accepted" response
+        return jsonify({
+            "message": "Pipeline execution started.",
+            "bbox": bbox_str
+        }), 202 # 202: Accepted
+
+    except Exception as e:
+        print(f"Error in /api/run-pipeline: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ===================================================================
+
+if __name__ == '__main__':
+    # Use 0.0.0.0 to make it accessible on your network (and Lightsail)
+    # Your Procfile will override this, but it's good for local testing
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Starting Main API Server on http://0.0.0.0:{port}")
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)

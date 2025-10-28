@@ -169,10 +169,15 @@ def initialize_db_goes():
 # vvvv THIS IS THE UPDATED FUNCTION vvvv
 # =================================================================
 
-def fetch_firms(sensor, db_name, table_name):
+def fetch_firms(sensor, db_name, table_name, bbox):
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{sensor}/{BBOX}/{DAYS}"
-    print(f"[{timestamp}] Fetching {sensor} data")
+    
+    # --- THIS IS THE KEY CHANGE ---
+    # The URL is now built using the 'bbox' argument passed to the function
+    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{sensor}/{bbox}/{DAYS}"
+    # --- END OF KEY CHANGE ---
+    
+    print(f"[{timestamp}] Fetching {sensor} data for BBOX: {bbox}")
     
     con = None  # Initialize con outside try block for finally clause
     df = pd.DataFrame() # Initialize empty DataFrame for robust error handling
@@ -190,7 +195,7 @@ def fetch_firms(sensor, db_name, table_name):
         
         # Add our custom columns
         df['sensor'] = sensor
-        df['acquired_at'] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        df['acquired_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         # Clean duplicates *within the downloaded file* just in case.
         if not df.empty:
@@ -211,45 +216,19 @@ def fetch_firms(sensor, db_name, table_name):
         df.to_sql(staging_table, con, if_exists="replace", index=False)
 
         
-        # === NEW "UPSERT" LOGIC ===
-        # This handles both INSERTS and UPDATES in one command.
+        # === "INSERT OR REPLACE" LOGIC (Compatible with old SQLite) ===
         if not df.empty:
-            # Get all columns for the INSERT
             all_columns = [f'"{col}"' for col in df.columns]
             all_columns_str = ", ".join(all_columns)
-            
-            # Define primary key columns (must match your CREATE TABLE)
-            pk_columns = ['latitude', 'longitude', 'acq_date', 'acq_time']
-            
-            # Get columns to UPDATE (all columns *except* the primary key)
-            update_columns = [col for col in df.columns if col not in pk_columns]
-            
-            # Create the "SET" part of the query
-            # e.g., "confidence = excluded.confidence, version = excluded.version"
-            update_set_str = ", ".join([f'"{col}" = excluded."{col}"' for col in update_columns])
-            
-            # Step B: Insert or Update (Upsert)
-            # If PK matches, UPDATE the other columns.
-            # If no PK match, INSERT a new row.
-            upsert_query = f'''
-                INSERT INTO {table_name} ({all_columns_str})
-                SELECT {all_columns_str} FROM {staging_table}
-                ON CONFLICT(latitude, longitude, acq_date, acq_time) DO UPDATE SET
-                    {update_set_str}
-            '''
-            cur.execute(upsert_query)
+        replace_query = f'''
+            INSERT OR REPLACE INTO {table_name} ({all_columns_str})
+            SELECT {all_columns_str} FROM {staging_table}
+        '''
+        cur.execute(replace_query)
 
 
         # === NEW "DELETE" LOGIC ===
-        # This is the critical step you were missing.
-        
-        # We must define the time window to check for deletions.
-        # We can't just use the dates in the staging_table, because if there
-        # are NO fires, the staging table is empty, and nothing gets deleted.
-        # Instead, we build a date list based on the {DAYS} variable.
-        
         utc_now = datetime.now(timezone.utc)
-        # We check +1 day to cover the full 48-hour window (e.g., 48h ago might be 2 days ago)
         date_window = [
             (utc_now - timedelta(days=i)).strftime('%Y-%m-%d') 
             for i in range(int(DAYS) + 1)
@@ -257,15 +236,16 @@ def fetch_firms(sensor, db_name, table_name):
         date_window_tuple = tuple(date_window) # e.g., ('2025-10-27', '2025-10-26', '2025-10-25')
 
         # Step C: Delete
-        # Delete rows from our local DB that are in the time window
-        # but are *NOT* in the fresh data from NASA (the staging table).
+        # This logic is correct. It deletes records from the DB that are in the
+        # time window but NOT in the new data we just downloaded.
+        # ***BUT*** this only works if the BBOX is the same!
+        # If the BBOX changes, we must delete *all* old data first.
+        # We will handle that in `run_pipeline.py`.
+        
         delete_query = f'''
             DELETE FROM {table_name}
             WHERE
-                -- Condition 1: The row is inside the time window we just fetched
                 acq_date IN {date_window_tuple}
-                
-                -- Condition 2: And this row (by PK) does NOT exist in the new data
                 AND NOT EXISTS (
                     SELECT 1 FROM {staging_table}
                     WHERE
@@ -284,8 +264,6 @@ def fetch_firms(sensor, db_name, table_name):
         con.commit()
 
         # === NEW "REPORTING" LOGIC ===
-        
-        # Get count after
         count_after = pd.read_sql_query(f"SELECT COUNT(*) as count FROM {table_name}", con)['count'][0]
         net_change = count_after - count_before
         
@@ -299,7 +277,6 @@ def fetch_firms(sensor, db_name, table_name):
     finally:
         if con:
             con.close()
-
 # db_init.py section
 def init_all_dbs():
     initialize_db_modis()
