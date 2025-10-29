@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
 import './SidebarPanel.css';
 
+// --- MODIFIED: Accept new props ---
 const SidebarPanel = ({ 
   fireCount, 
   totalFireCount, 
   confidenceFilters, 
   toggleConfidenceFilter,
   timeRange,
-  handleTimeRangeChange
+  handleTimeRangeChange,
+  handleUpdateAOI,
+  updateStatus, // Replaces isUpdatingAOI
+  aoiInputs,
+  handleAoiInputChange,
+  handleClearAndResetAOI // New prop
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Helper var to disable buttons
+  const isBusy = updateStatus !== 'idle';
 
   return (
     <div className="sidebar-wrapper">
       <div className={`sidebar-panel ${isCollapsed ? 'collapsed' : ''}`}>
+        
+        {/* Toggle Button (no changes) */}
         <button 
           className="toggle-button"
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -26,6 +37,7 @@ const SidebarPanel = ({
           </span>
         </button>
 
+        {/* Header (no changes) */}
         <div className="panel-header">
           <div className="title-section">
             <div className="logo">
@@ -45,6 +57,7 @@ const SidebarPanel = ({
 
         {!isCollapsed && (
           <>
+            {/* Time Range (no changes) */}
             <div className="panel-section">
               <h3>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,6 +85,7 @@ const SidebarPanel = ({
               </div>
             </div>
 
+            {/* Confidence Level (no changes) */}
             <div className="panel-section">
               <h3>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -106,6 +120,7 @@ const SidebarPanel = ({
               </div>
             </div>
 
+            {/* --- MODIFIED: Area of Interest --- */}
             <div className="panel-section">
               <h3>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -118,36 +133,70 @@ const SidebarPanel = ({
                 <div className="form-row">
                   <div className="form-group">
                     <label>Latitude Min</label>
-                    <input type="number" placeholder="e.g., 48.0" />
+                    <input 
+                      type="number" 
+                      placeholder="e.g., 53.4" 
+                      name="latMin"
+                      value={aoiInputs.latMin}
+                      onChange={handleAoiInputChange}
+                    />
                   </div>
                   <div className="form-group">
                     <label>Latitude Max</label>
-                    <input type="number" placeholder="e.g., 60.0" />
+                    <input 
+                      type="number" 
+                      placeholder="e.g., 53.5" 
+                      name="latMax"
+                      value={aoiInputs.latMax}
+                      onChange={handleAoiInputChange}
+                    />
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Longitude Min</label>
-                    <input type="number" placeholder="e.g., -140.0" />
+                    <input 
+                      type="number" 
+                      placeholder="e.g., -104.2" 
+                      name="lonMin"
+                      value={aoiInputs.lonMin}
+                      onChange={handleAoiInputChange}
+                    />
                   </div>
                   <div className="form-group">
                     <label>Longitude Max</label>
-                    <input type="number" placeholder="e.g., -110.0" />
+                    <input 
+                      type="number" 
+                      placeholder="e.g., -104.1"
+                      name="lonMax"
+                      value={aoiInputs.lonMax}
+                      onChange={handleAoiInputChange}
+                    />
                   </div>
                 </div>
                 <div className="form-actions">
-                  <button className="apply-btn">
+                  <button 
+                    className="apply-btn"
+                    onClick={handleUpdateAOI}
+                    disabled={isBusy}
+                  >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Apply AOI
+                    {/* --- MODIFIED: Show status --- */}
+                    {updateStatus === 'applying' ? 'Applying...' : 'Apply AOI'}
                   </button>
-                  <button className="clear-btn">
+                  <button 
+                    className="clear-btn"
+                    onClick={handleClearAndResetAOI} // <-- Use new handler
+                    disabled={isBusy}
+                  >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Clear
+                    {/* --- MODIFIED: Show status --- */}
+                    {updateStatus === 'resetting' ? 'Resetting...' : 'Clear & Reset'}
                   </button>
                 </div>
               </div>

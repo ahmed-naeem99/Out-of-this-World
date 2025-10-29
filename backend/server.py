@@ -21,9 +21,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Path to the database created by the pipeline
-# This absolute path is perfect, we'll keep using it.
-VALIDATED_DB = "/home/ubuntu/Out-of-this-World/validated_fires.db"
-
+VALIDATED_DB = "validated_fires.db"
 # This variable will track if the pipeline is already running
 is_pipeline_running = False
 

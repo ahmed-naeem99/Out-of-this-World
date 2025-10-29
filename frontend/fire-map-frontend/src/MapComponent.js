@@ -42,10 +42,19 @@ function MapComponent() {
   const [allFires, setAllFires] = useState([]);
   const [filteredFires, setFilteredFires] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingAOI, setIsUpdatingAOI] = useState(false); // <-- NEW STATE
-  const [error, setError] = useState(null); // <-- NEW STATE
+  const [error, setError] = useState(null);
   const mapRef = useRef();
+
+  // --- MODIFIED: Renamed state for clarity ---
+  const [updateStatus, setUpdateStatus] = useState('idle'); // 'idle', 'applying', 'resetting'
   
+  const [aoiInputs, setAoiInputs] = useState({
+    latMin: '',
+    latMax: '',
+    lonMin: '',
+    lonMax: ''
+  });
+
   // Filter states
   const [confidenceFilters, setConfidenceFilters] = useState({
     1: true,
@@ -55,16 +64,13 @@ function MapComponent() {
   });
   const [timeRange, setTimeRange] = useState('all');
 
-  // --- REFACTORED DATA FETCHING ---
-  // We put the data fetching in its own function so we can call it
-  // on page load AND after updating the AOI.
+  // --- Data Fetching (Using 'datetime' from your JSON) ---
   const fetchFireData = () => {
     console.log("Fetching fire data from /api/fires...");
-    setIsLoading(true); // Show main loader
+    setIsLoading(true);
     setError(null);
     
-    // This is your EXISTING data endpoint
-    fetch('http://35.182.187.24:5000/api/fires') 
+    fetch('http://127.0.0.1:5000/api/fires')
       .then((res) => {
         if (!res.ok) {
           throw new Error('Network response was not ok');
@@ -78,54 +84,34 @@ function MapComponent() {
           ...fire,
           lat: Number(fire.latitude),
           lng: Number(fire.longitude),
-          timestamp: new Date(fire.acq_date).getTime()
-        })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
-        
-        setAllFires(cleanedFires);
-        setFilteredFires(cleanedFires); // This will be re-filtered by the useEffect
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load fire data:', err);
-        setError('Failed to load fire data. Using mock data.'); // Show error
-        setIsLoading(false);
-        
-        // Fallback to mock data
-        const mockFires = [
-          { latitude: 58.5, longitude: -104.0, confidence_level: 3, acq_date: '2023-08-30', acq_time: '12:30' },
-          { latitude: 57.8, longitude: -103.5, confidence_level: 4, acq_date: '2023-08-30', acq_time: '13:45' },
-        ];
-        
-        const fireData = Array.isArray(mockFires) ? mockFires : [];
-        const cleanedFires = fireData.map(fire => ({
-          ...fire,
-          lat: Number(fire.latitude),
-          lng: Number(fire.longitude),
-          timestamp: new Date(fire.acq_date).getTime()
+          // Using the correct 'datetime' field from your validated data
+          timestamp: new Date(fire.datetime).getTime() 
         })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
         
         setAllFires(cleanedFires);
         setFilteredFires(cleanedFires);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load fire data:', err);
+        setError('Failed to load fire data.');
+        setIsLoading(false);
       });
   };
 
-  // Initial data load on component mount
+  // Initial data load
   useEffect(() => {
     fetchFireData();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
-  // Apply filters whenever filter states change (your code is good)
+  // Filtering logic (no changes)
   useEffect(() => {
-    if (allFires.length === 0 && !isLoading) return; // Don't filter if no fires
-    
+    if (allFires.length === 0 && !isLoading) return; 
     let filtered = [...allFires];
-    
-    // Apply confidence filters
     const activeConfidenceLevels = Object.keys(confidenceFilters)
       .filter(level => confidenceFilters[level])
       .map(level => parseInt(level));
     
-    // Handle case where all are unchecked (show nothing)
     if (activeConfidenceLevels.length < 4) {
         if (activeConfidenceLevels.length === 0) {
             filtered = [];
@@ -136,7 +122,6 @@ function MapComponent() {
         }
     }
     
-    // Apply time filters
     const now = new Date().getTime();
     switch(timeRange) {
       case '24h':
@@ -149,101 +134,93 @@ function MapComponent() {
         filtered = filtered.filter(fire => now - fire.timestamp <= 30 * 24 * 60 * 60 * 1000);
         break;
       default:
-        // 'all' case, do nothing
         break;
     }
     
     setFilteredFires(filtered);
-  }, [allFires, confidenceFilters, timeRange, isLoading]); // Added isLoading
+  }, [allFires, confidenceFilters, timeRange, isLoading]);
 
-  // Filter handlers (your code is good)
+  // --- Filter Handlers (no changes) ---
   const toggleConfidenceFilter = (level) => {
-    setConfidenceFilters(prev => ({
-      ...prev,
-      [level]: !prev[level]
-    }));
+    setConfidenceFilters(prev => ({ ...prev, [level]: !prev[level] }));
   };
 
   const handleTimeRangeChange = (range) => {
     setTimeRange(range);
   };
 
-  // --- NEW FUNCTION TO HANDLE AOI UPDATE ---
-  const handleUpdateAOI = async () => {
-    if (!mapRef.current) {
-        console.error("Map is not yet initialized.");
-        return;
-    }
-    if (isUpdatingAOI) {
-        console.log("AOI update already in progress.");
-        return;
-    }
+  // --- AOI Form Handlers ---
+  const handleAoiInputChange = (e) => {
+    const { name, value } = e.target;
+    setAoiInputs(prev => ({ ...prev, [name]: value }));
+  };
 
-    setIsUpdatingAOI(true); // Show secondary loader
+  const clearAoiInputs = () => {
+    setAoiInputs({ latMin: '', latMax: '', lonMin: '', lonMax: '' });
+  };
+
+  // --- NEW: Refactored Core Pipeline Function ---
+  const triggerPipelineRun = async (bbox_str, isReset = false) => {
+    if (updateStatus !== 'idle') return; // Prevent multiple clicks
+    setUpdateStatus(isReset ? 'resetting' : 'applying');
     setError(null);
-    console.log("Updating Area of Interest...");
 
-    // 1. Get the current map boundaries
-    const bounds = mapRef.current.getBounds();
-    const bbox_str = [
-        bounds.getWest().toFixed(4),
-        bounds.getSouth().toFixed(4),
-        bounds.getEast().toFixed(4),
-        bounds.getNorth().toFixed(4)
-    ].join(',');
-
-    console.log("New BBOX string:", bbox_str);
+    console.log("Triggering pipeline run with BBOX:", bbox_str);
 
     try {
-      // 2. Call your NEW pipeline server (on port 5001)
-      //    NOTE: Update the IP address to your backend's IP.
-      //    If running locally, 'http://127.0.0.1:5001' is fine.
-      const response = await fetch('http://127.0.0.1:5001/api/run-pipeline', {
+      const response = await fetch('http://127.0.0.1:5000/api/run-pipeline', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ bbox: bbox_str }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bbox: bbox_str }) // Send the bbox (or null for default)
       });
 
       const result = await response.json();
-
-      if (response.status === 429) { // "Too Many Requests"
-        console.warn("Pipeline is already running.");
-        setError("Pipeline is busy. Please try again in a moment.");
-        setIsUpdatingAOI(false);
-        return;
-      }
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to trigger pipeline');
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to trigger pipeline');
 
       console.log("Pipeline trigger response:", result.message);
-      
-      // 3. Wait for the pipeline to work.
-      // This is a simple solution. A better one involves WebSockets
-      // or polling, but this is much simpler to implement.
-      // Let's give it 15 seconds to fetch and process.
-      console.log("Waiting 15 seconds for pipeline to process...");
+      console.log("Waiting 15 seconds for pipeline...");
       await sleep(15000); 
 
-      // 4. Re-fetch data from the ORIGINAL data server
-      console.log("Pipeline wait finished. Fetching new fire data...");
+      console.log("Fetching new fire data...");
       fetchFireData(); // This will set isLoading(false) when done
 
     } catch (err) {
       console.error('Failed to update AOI:', err);
       setError('Failed to update Area of Interest.');
     } finally {
-      // fetchFireData() will manage the isLoading state,
-      // but we must turn off the isUpdatingAOI state.
-      setIsUpdatingAOI(false);
+      setUpdateStatus('idle'); // Set status back to idle
     }
   };
 
+  // --- MODIFIED: "Apply" button handler ---
+  const handleUpdateAOI = () => {
+    const { latMin, latMax, lonMin, lonMax } = aoiInputs;
+    const allFilled = latMin && latMax && lonMin && lonMax;
+    const allEmpty = !latMin && !latMax && !lonMin && !lonMax;
 
-  // Main loading spinner
+    if (allFilled) {
+      // Case 1: All fields filled. Send the custom BBOX.
+      const bbox_str = [lonMin, latMin, lonMax, latMax].join(',');
+      triggerPipelineRun(bbox_str, false);
+    } else if (allEmpty) {
+      // Case 2: All fields empty. Trigger a default reset.
+      console.log("Empty fields, resetting to default AOI.");
+      triggerPipelineRun(null, true); // `null` tells the backend to use default
+    } else {
+      // Case 3: Partially filled. Show an error.
+      setError("Please fill all fields, or clear all fields to reset to default.");
+    }
+  };
+
+  // --- NEW: "Clear & Reset" button handler ---
+  const handleClearAndResetAOI = () => {
+    if (updateStatus !== 'idle') return;
+    clearAoiInputs();
+    triggerPipelineRun(null, true); // `null` tells the backend to use default
+  };
+
+
+  // --- Main loading spinner (no changes) ---
   if (isLoading && allFires.length === 0) {
     return (
       <div className="map-container">
@@ -257,15 +234,17 @@ function MapComponent() {
 
   return (
     <div className="map-container">
-      {/* --- NEW Secondary Loader for AOI updates --- */}
-      {isUpdatingAOI && (
+      {/* --- Secondary Loader (Uses new state) --- */}
+      {updateStatus !== 'idle' && (
         <div className="loading-overlay transparent">
             <div className="loading-spinner"></div>
-            <p>Updating Area of Interest... This may take a moment.</p>
+            <p>
+              {updateStatus === 'applying' ? 'Applying new AOI...' : 'Resetting to default...'}
+            </p>
         </div>
       )}
 
-      {/* --- NEW Error Message Display --- */}
+      {/* Error Display (no changes) */}
       {error && (
           <div className="error-banner">
               <p>{error}</p>
@@ -273,6 +252,7 @@ function MapComponent() {
           </div>
       )}
 
+      {/* MapContainer (no changes) */}
       <MapContainer
         center={[58.5, -104.0]}
         zoom={5}
@@ -298,12 +278,14 @@ function MapComponent() {
                 <p><strong>Confidence:</strong> {fire.confidence_level}/4</p>
                 <p><strong>Date:</strong> {fire.acq_date}</p>
                 <p><strong>Time:</strong> {fire.acq_time}</p>
+                <p><strong>Sensors:</strong> {fire.validating_sensors}</p>
               </div>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
 
+      {/* --- MODIFIED: Pass all the new props --- */}
       <SidebarPanel 
         fireCount={filteredFires.length} 
         totalFireCount={allFires.length}
@@ -311,19 +293,13 @@ function MapComponent() {
         toggleConfidenceFilter={toggleConfidenceFilter}
         timeRange={timeRange}
         handleTimeRangeChange={handleTimeRangeChange}
-        // --- PASS NEW PROPS ---
+        // --- Pass all new/modified AOI props ---
         handleUpdateAOI={handleUpdateAOI}
-        isUpdatingAOI={isUpdatingAOI}
+        updateStatus={updateStatus} // Replaces isUpdatingAOI
+        aoiInputs={aoiInputs}
+        handleAoiInputChange={handleAoiInputChange}
+        handleClearAndResetAOI={handleClearAndResetAOI} // New prop
       />
-
-      <div className="map-info-panel">
-        <div className="info-content">
-          <span className="fire-icon">🔥</span>
-          <span className="fire-count">
-            {isLoading ? 'Loading...' : `${filteredFires.length} Fires Detected`}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }
