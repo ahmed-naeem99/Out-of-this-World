@@ -11,7 +11,7 @@ function App() {
       <nav className="navbar">
         <div className="navbar-brand">
           <div className="logo-container">
-            <span className="fire-icon">🔥</span>
+            
             <h1 className="logo-text">FireWatch</h1>
           </div>
           <span className="tagline">Real-time Wildfire Monitoring</span>

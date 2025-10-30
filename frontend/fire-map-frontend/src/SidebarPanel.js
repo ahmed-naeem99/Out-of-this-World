@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import './SidebarPanel.css';
 
-// --- MODIFIED: Accept new props ---
 const SidebarPanel = ({ 
   fireCount, 
   totalFireCount, 
@@ -10,44 +9,34 @@ const SidebarPanel = ({
   timeRange,
   handleTimeRangeChange,
   handleUpdateAOI,
-  updateStatus, // Replaces isUpdatingAOI
+  updateStatus,
   aoiInputs,
   handleAoiInputChange,
-  handleClearAndResetAOI // New prop
+  handleClearAndResetAOI
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // Helper var to disable buttons
   const isBusy = updateStatus !== 'idle';
 
   return (
     <div className="sidebar-wrapper">
       <div className={`sidebar-panel ${isCollapsed ? 'collapsed' : ''}`}>
         
-        {/* Toggle Button (no changes) */}
+        {/* Toggle Button */}
         <button 
           className="toggle-button"
           onClick={() => setIsCollapsed(!isCollapsed)}
           aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
         >
           <span className={`toggle-icon ${isCollapsed ? 'collapsed' : ''}`}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
         </button>
 
-        {/* Header (no changes) */}
+        {/* Header */}
         <div className="panel-header">
-          <div className="title-section">
-            <div className="logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.5 15.5C17.5 19.5 14.5 22 12 22C9.5 22 6.5 19.5 6.5 15.5C6.5 12.5 9.5 8.5 12 6.5C14.5 8.5 17.5 12.5 17.5 15.5Z" stroke="#FF5E5B" strokeWidth="2"/>
-                <path d="M12 2C12 2 15 4.5 15 8C15 11.5 12 11.5 12 11.5C12 11.5 9 11.5 9 8C9 4.5 12 2 12 2Z" fill="#FF5E5B"/>
-              </svg>
-            </div>
-            <h2>FireWatch Analytics</h2>
-          </div>
+          <h2>FireWatch Analytics</h2>
           {!isCollapsed && (
             <div className="fire-count">
               <span className="count">{fireCount}</span> of <span className="total">{totalFireCount}</span> fires visible
@@ -56,16 +45,10 @@ const SidebarPanel = ({
         </div>
 
         {!isCollapsed && (
-          <>
-            {/* Time Range (no changes) */}
+          <div className="panel-content">
+            {/* Time Range */}
             <div className="panel-section">
-              <h3>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 8V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-                Time Range
-              </h3>
+              <h3>Time Range</h3>
               <div className="time-filter">
                 {[
                   { value: 'all', label: 'All Time', icon: '∞' },
@@ -85,16 +68,9 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* Confidence Level (no changes) */}
+            {/* Confidence Levels */}
             <div className="panel-section">
-              <h3>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M7 12H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M12 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                Confidence Level
-              </h3>
+              <h3>Confidence Level</h3>
               <div className="confidence-filter">
                 {[1, 2, 3, 4].map(level => (
                   <div 
@@ -120,15 +96,9 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* --- MODIFIED: Area of Interest --- */}
+            {/* AOI */}
             <div className="panel-section">
-              <h3>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Area of Interest
-              </h3>
+              <h3>Area of Interest</h3>
               <div className="aoi-form">
                 <div className="form-row">
                   <div className="form-group">
@@ -180,28 +150,19 @@ const SidebarPanel = ({
                     onClick={handleUpdateAOI}
                     disabled={isBusy}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    {/* --- MODIFIED: Show status --- */}
                     {updateStatus === 'applying' ? 'Applying...' : 'Apply AOI'}
                   </button>
                   <button 
                     className="clear-btn"
-                    onClick={handleClearAndResetAOI} // <-- Use new handler
+                    onClick={handleClearAndResetAOI}
                     disabled={isBusy}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    {/* --- MODIFIED: Show status --- */}
                     {updateStatus === 'resetting' ? 'Resetting...' : 'Clear & Reset'}
                   </button>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

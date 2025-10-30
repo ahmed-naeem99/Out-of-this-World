@@ -164,15 +164,6 @@ def initialize_db_goes():
     con.commit()
     con.close()
 
-
-# =================================================================
-# vvvv THIS IS THE UPDATED FUNCTION vvvv
-# =================================================================
-
-# =================================================================
-# vvvv THIS IS THE UPDATED AND CORRECTED FUNCTION vvvv
-# =================================================================
-
 def fetch_firms(sensor, db_name, table_name, bbox):
     # Use timezone-aware datetime
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')

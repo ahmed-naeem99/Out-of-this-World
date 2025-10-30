@@ -7,22 +7,42 @@
 }
 
 .sidebar-panel {
-  width: 470px;
+  width: 120%;
   min-height: 80px;
-  background: rgba(30, 30, 42, 0.95);
+  /* background: rgba(30, 30, 42, 0.95); */
+  background: rgba(33, 33, 33, 0.555);
   backdrop-filter: blur(20px);
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  padding: 24px;
-  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0);
+  padding: 16px;
+  display: flex;
+  /* height: fit-content; */
+  flex-direction: column;
+  gap: 16px;
+  font-size: 0.85rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #ac4622;
+  color: #F5F5F5;
+  overflow-y: auto;      /* allow vertical scrolling */
+  overflow-x: hidden;    /* prevent horizontal scroll */
+  /* max-height: calc(80vh - 40px);  */
+  max-height: 120vh;
+  padding-right: 12px;   /* optional, avoids content touching scrollbar */
+  transform: scale(0.73);
+  transform-origin: top left; /* scale from top left corner */
+  /* width: calc(100% * 0.65);
+  max-height: calc(80vh * 0.65); */
+}
+
+.sidebar-panel .panel-content {
+  padding: 16px; /* internal padding */
+  transform-origin: top left;
+  /* transform: scale(0.65); */
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #F5F5F5;
-  max-height: calc(100vh - 40px);
+  gap: 16px;
 }
+
 
 .sidebar-panel.collapsed {
   width: 320px;
@@ -97,9 +117,9 @@
 .panel-header h2 {
   color: #F5F5F5;
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #FF5E5B 0%, #00CECB 100%);
+  background: white;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -114,12 +134,12 @@
 }
 
 .count {
-  color: #FF5E5B;
+  color: #ffffff;
   font-weight: 600;
 }
 
 .total {
-  color: #00CECB;
+  color: #ffffff;
   font-weight: 500;
 }
 
@@ -127,7 +147,7 @@
   max-height: 500px;
   transition: all 0.4s ease;
   overflow: hidden;
-  padding-bottom: 20px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -138,8 +158,8 @@
 
 .panel-section h3 {
   color: #F5F5F5;
-  margin: 0 0 16px 0;
-  font-size: 1rem;
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -155,9 +175,10 @@
 .confidence-toggle {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 0.8rem;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -171,8 +192,8 @@
 }
 
 .confidence-toggle.active {
-  background: rgba(0, 206, 203, 0.1);
-  border-color: rgba(0, 206, 203, 0.3);
+  background: #ac47225f;
+  border-color: #ac4622;
 }
 
 .confidence-info {
@@ -183,8 +204,8 @@
 }
 
 .toggle-track {
-  width: 40px;
-  height: 20px;
+  width: 32px;
+  height: 16px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   position: relative;
@@ -193,12 +214,12 @@
 }
 
 .confidence-toggle.active .toggle-track {
-  background: rgba(0, 206, 203, 0.3);
+  background: #b04a25f1;
 }
 
 .toggle-thumb {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   background: #F5F5F5;
   border-radius: 50%;
   position: absolute;
@@ -209,12 +230,12 @@
 
 .confidence-toggle.active .toggle-thumb {
   left: 22px;
-  background: #00CECB;
+  background: white;
 }
 
 .confidence-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   margin-right: 0;
 }
@@ -243,12 +264,12 @@
 }
 
 .time-option {
-  padding: 16px 12px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   text-align: center;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: all 0.3s ease;
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
@@ -264,9 +285,9 @@
 }
 
 .time-option.active {
-  background: rgba(255, 94, 91, 0.15);
-  border-color: rgba(255, 94, 91, 0.3);
-  color: #FF5E5B;
+  background: #ac472292;
+  border-color: #ac4622;
+  color: white;
 }
 
 .time-icon {
@@ -302,10 +323,10 @@
 }
 
 .form-group input {
-  padding: 12px;
+  padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
   background: rgba(255, 255, 255, 0.05);
   color: #F5F5F5;
   transition: all 0.3s ease;
@@ -329,11 +350,11 @@
 }
 
 .apply-btn, .clear-btn {
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
@@ -344,12 +365,12 @@
 }
 
 .apply-btn {
-  background: linear-gradient(135deg, #FF5E5B 0%, #FF8E8C 100%);
+  background: linear-gradient(135deg, #ac47227f 0%, #ac4622 100%);
   color: white;
 }
 
 .apply-btn:hover {
-  background: linear-gradient(135deg, #FF4B48 0%, #FF7C79 100%);
+  background: linear-gradient(135deg, #ac4622 0%, #ac4622 100%);
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(255, 94, 91, 0.3);
 }
