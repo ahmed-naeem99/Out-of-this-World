@@ -70,7 +70,7 @@ function MapComponent() {
     setIsLoading(true);
     setError(null);
     
-    fetch('http://127.0.0.1:5000/api/fires')
+    fetch(`${process.env.REACT_APP_API_URL}/api/fires`)
       .then((res) => {
         if (!res.ok) {
           throw new Error('Network response was not ok');
@@ -168,7 +168,7 @@ function MapComponent() {
     console.log("Triggering pipeline run with BBOX:", bbox_str);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/run-pipeline', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/run-pipeline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bbox: bbox_str }) // Send the bbox (or null for default)
