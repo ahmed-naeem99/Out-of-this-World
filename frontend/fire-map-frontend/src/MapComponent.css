@@ -25,8 +25,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100vh !important;
-  width: 100vw !important;
   overflow: hidden;
   background-color: var(--darker);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -132,7 +130,7 @@
     /* --- MODIFIED: Better proportions (more padding) --- */
     padding: 32px 40px; 
     /* --- MODIFIED: Narrower width --- */
-    width: 500px;
+    width: 530px;
     max-width: 90%;
     box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
     text-align: center;

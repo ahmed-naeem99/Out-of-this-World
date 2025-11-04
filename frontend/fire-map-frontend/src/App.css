@@ -144,7 +144,8 @@ html, body, #root, .App {
 .main-content {
   flex: 1;
   position: relative;
-  height: calc(100% - 70px);
+  height: calc(100% - 60px);
+  z-index: 0;
 }
 
 /* Responsive */
