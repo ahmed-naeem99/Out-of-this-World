@@ -1,4 +1,6 @@
 import sqlite3
+# Assuming firms_data_collector_v2 is renamed to firms_data_collector for consistency,
+# but using the V2 structure with the provided SENSORS
 from firms_data_collector_v2 import init_all_dbs, fetch_firms, SENSORS
 from fire_alert_validator import validate_fires, initialize_validated_db
 from datetime import datetime, timezone
@@ -18,11 +20,10 @@ ALL_TABLES = [(db, table) for _, db, table in SENSORS]
 VALIDATED_DB = "validated_fires.db"
 VALIDATED_TABLE = "validated_fires"
 
-# This is the default BBOX from your collector script
-DEFAULT_BBOX = "-110.1,53.2,-100.5,60.9"
+# --- MODIFIED: Default BBOX is now an empty string for an empty map start ---
+DEFAULT_BBOX = ""
 
 # We keep track of the last BBOX used
-# This is a simple way to detect a change
 try:
     with open("last_bbox.txt", "r") as f:
         CURRENT_BBOX_IN_DB = f.read()
@@ -33,9 +34,9 @@ except FileNotFoundError:
 def clear_all_data():
     """
     Connects to every database and deletes all data from every table.
-    This is critical when the Area of Interest changes.
+    This is critical when the Area of Interest changes, OR when the AOI is reset to empty.
     """
-    print("--- New BBOX detected. Clearing all old data... ---")
+    print("--- New BBOX or AOI reset detected. Clearing all old data... ---")
     
     # Get a unique list of all databases
     all_dbs = set([db for db, _ in ALL_TABLES])
@@ -76,15 +77,13 @@ def run_pipeline(bbox_str=None):
     """
     global CURRENT_BBOX_IN_DB
     
-    # Use the provided BBOX or fall back to the default
+    # Use the provided BBOX or fall back to the empty default
     new_bbox = bbox_str or DEFAULT_BBOX
     
     print(f"--- Pipeline started at {datetime.now(timezone.utc).isoformat()} ---")
-    print(f"Target BBOX: {new_bbox}")
+    print(f"Target BBOX: {'(EMPTY - NO FETCH)' if not new_bbox else new_bbox}")
     
-    # --- THIS IS THE KEY LOGIC ---
-    # If the new BBOX is different from the one we used last time,
-    # we must clear all old data.
+    # --- BBOX CHANGE DETECTION & CLEARING LOGIC ---
     if new_bbox != CURRENT_BBOX_IN_DB:
         clear_all_data()
         # Save the new BBOX as the "current" one
@@ -92,7 +91,7 @@ def run_pipeline(bbox_str=None):
             with open("last_bbox.txt", "w") as f:
                 f.write(new_bbox)
             CURRENT_BBOX_IN_DB = new_bbox
-            print(f"Updated last_bbox.txt to: {new_bbox}")
+            print(f"Updated last_bbox.txt to: {'(EMPTY)' if not new_bbox else new_bbox}")
         except Exception as e:
             print(f"Error writing to last_bbox.txt: {e}")
     else:
@@ -103,17 +102,20 @@ def run_pipeline(bbox_str=None):
     init_all_dbs()
     initialize_validated_db()
     
-    # Step 1: Fetch new data using the *new_bbox*
-    for sensor, db, table in SENSORS:
-        # We pass the new_bbox to fetch_firms
-        fetch_firms(sensor, db, table, new_bbox)
+    # --- CONDITIONAL FETCH: Only fetch if a BBOX is provided/set ---
+    if new_bbox:
+        # Step 1: Fetch new data using the *new_bbox*
+        for sensor, db, table in SENSORS:
+            # fetch_firms will now skip if new_bbox is empty
+            fetch_firms(sensor, db, table, new_bbox) 
 
-    # Step 2: Validate fires
-    validate_fires(PRIMARY[0], PRIMARY[1], SECONDARY)
+        # Step 2: Validate fires
+        validate_fires(PRIMARY[0], PRIMARY[1], SECONDARY)
+    else:
+        print("BBOX is empty. Skipping data fetch and validation.")
 
     print(f"--- Pipeline finished at {datetime.now(timezone.utc).isoformat()} ---\n")
 
 if __name__ == "__main__":
-    # This allows you to still run `python run_pipeline.py` manually.
-    # It will just use the default BBOX.
+    # When run manually, it uses the empty default BBOX
     run_pipeline()

@@ -6,8 +6,12 @@ const SidebarPanel = ({
   totalFireCount, 
   confidenceFilters, 
   toggleConfidenceFilter,
+  // --- MODIFIED: New Time Props ---
   timeRange,
   handleTimeRangeChange,
+  daysSlider,
+  handleDaysSliderChange,
+  // --- AOI Props ---
   handleUpdateAOI,
   updateStatus,
   aoiInputs,
@@ -16,6 +20,16 @@ const SidebarPanel = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isBusy = updateStatus !== 'idle';
+  
+  // Helper function to wrap the time range change for the buttons
+  const handleTimeButtonChange = (value) => {
+    // For the buttons, we pass the range and a default day count
+    if (value === 'today') {
+      handleTimeRangeChange(value, 1);
+    } else if (value === '7d') {
+      handleTimeRangeChange(value, 7);
+    }
+  }
 
   return (
     <div className="sidebar-wrapper">
@@ -46,29 +60,44 @@ const SidebarPanel = ({
 
         {!isCollapsed && (
           <div className="panel-content">
-            {/* Time Range */}
+            {/* Time Range - MODIFIED */}
             <div className="panel-section">
               <h3>Time Range</h3>
               <div className="time-filter">
                 {[
-                  { value: 'all', label: 'All Time', icon: '∞' },
-                  { value: '24h', label: 'Last 24h', icon: '⏱' },
+                  { value: 'today', label: 'Today', icon: '☀️' },
                   { value: '7d', label: 'Last 7 Days', icon: '📅' },
-                  { value: '30d', label: 'Last 30 Days', icon: '📆' }
                 ].map(option => (
                   <div 
                     key={option.value}
+                    // Check if the range is 'daysSlider' and the days match
                     className={`time-option ${timeRange === option.value ? 'active' : ''}`}
-                    onClick={() => handleTimeRangeChange(option.value)}
+                    onClick={() => handleTimeButtonChange(option.value)}
                   >
                     <span className="time-icon">{option.icon}</span>
                     <span className="time-label">{option.label}</span>
                   </div>
                 ))}
               </div>
+              
+              {/* New Days Slider */}
+              <div className="days-slider-container">
+                <label>Past {daysSlider} Days</label>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="7" 
+                  value={daysSlider}
+                  // Set the range to 'daysSlider' when the user starts dragging/clicking the slider
+                  onMouseDown={() => timeRange !== 'daysSlider' && handleTimeRangeChange('daysSlider', daysSlider)}
+                  onMouseUp={handleDaysSliderChange} // Trigger API call on release
+                  onChange={handleDaysSliderChange} // Update value instantly
+                  className={`days-slider ${timeRange === 'daysSlider' ? 'active' : ''}`}
+                />
+              </div>
             </div>
 
-            {/* Confidence Levels */}
+            {/* Confidence Levels (Unchanged) */}
             <div className="panel-section">
               <h3>Confidence Level</h3>
               <div className="confidence-filter">
@@ -96,7 +125,7 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* AOI */}
+            {/* AOI (Unchanged functionality, new placeholders for context) */}
             <div className="panel-section">
               <h3>Area of Interest</h3>
               <div className="aoi-form">
@@ -105,7 +134,7 @@ const SidebarPanel = ({
                     <label>Latitude Min</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., 53.4" 
+                      placeholder="e.g., 53.2" 
                       name="latMin"
                       value={aoiInputs.latMin}
                       onChange={handleAoiInputChange}
@@ -115,7 +144,7 @@ const SidebarPanel = ({
                     <label>Latitude Max</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., 53.5" 
+                      placeholder="e.g., 60.9" 
                       name="latMax"
                       value={aoiInputs.latMax}
                       onChange={handleAoiInputChange}
@@ -127,7 +156,7 @@ const SidebarPanel = ({
                     <label>Longitude Min</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., -104.2" 
+                      placeholder="e.g., -110.1" 
                       name="lonMin"
                       value={aoiInputs.lonMin}
                       onChange={handleAoiInputChange}
@@ -137,7 +166,7 @@ const SidebarPanel = ({
                     <label>Longitude Max</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., -104.1"
+                      placeholder="e.g., -100.5"
                       name="lonMax"
                       value={aoiInputs.lonMax}
                       onChange={handleAoiInputChange}

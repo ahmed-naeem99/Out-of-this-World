@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import SidebarPanel from './SidebarPanel';
 
-// Fix for default markers... (your code is good)
+// Fix for default markers...
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-// Create fire icons... (your code is good)
+// Create fire icons...
 const createFireIcon = (confidence) => {
   const colors = ['#FFD700', '#FFA500', '#FF4500', '#FF0000'];
   const sizes = [20, 24, 28, 32];
@@ -41,36 +41,78 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function MapComponent() {
   const [allFires, setAllFires] = useState([]);
   const [filteredFires, setFilteredFires] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- MODIFIED: Initial loading is now handled by the BBOX prompt state
+  const [isAoiSet, setIsAoiSet] = useState(false); // New state to track if a BBOX has been set
+  const [isLoading, setIsLoading] = useState(false); // Reset to false, only trigger for fetch
   const [error, setError] = useState(null);
   const mapRef = useRef();
 
-  // --- MODIFIED: Renamed state for clarity ---
+  // State for tracking BBOX pipeline status
   const [updateStatus, setUpdateStatus] = useState('idle'); // 'idle', 'applying', 'resetting'
   
+  // Default BBOX coordinates for display/input hints
+  const DEFAULT_AOI_HINTS = {
+    latMin: '53.2',
+    latMax: '60.9',
+    lonMin: '-110.1',
+    lonMax: '-100.5'
+  };
+
+  // State for AOI inputs (starts with empty strings)
   const [aoiInputs, setAoiInputs] = useState({
     latMin: '',
     latMax: '',
     lonMin: '',
     lonMax: ''
   });
+  
+  // State for the initial BBOX entry screen
+  const [initialBbox, setInitialBbox] = useState({
+    latMin: '', latMax: '', lonMin: '', lonMax: ''
+  });
 
   // Filter states
   const [confidenceFilters, setConfidenceFilters] = useState({
-    1: true,
-    2: true,
-    3: true,
-    4: true
+    1: true, 2: true, 3: true, 4: true
   });
-  const [timeRange, setTimeRange] = useState('all');
+  
+  // --- MODIFIED: New time range state and slider state ---
+  const [timeRange, setTimeRange] = useState('7d'); // Default to last 7 days
+  const [daysSlider, setDaysSlider] = useState(7); // Slider value between 1 and 7
 
-  // --- Data Fetching (Using 'datetime' from your JSON) ---
-  const fetchFireData = () => {
+  // --- Calculate 'since' parameter for API based on current timeRange/daysSlider ---
+  const getSinceParam = () => {
+    const now = new Date();
+    let daysToSubtract = 7; // Default for '7d' or slider on '7d'
+
+    if (timeRange === 'today') {
+      daysToSubtract = 1; // Last 24 hours is close enough for 'Today'/'1d'
+    } else if (timeRange === 'daysSlider') {
+      daysToSubtract = daysSlider;
+    } else {
+      daysToSubtract = 7; // '7d' default
+    }
+
+    // Calculate the start date and format as ISO 8601 for the API
+    const sinceDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+    return sinceDate.toISOString().replace(/\.000Z$/, 'Z'); // Format for SQLite/backend
+  };
+
+  // --- Data Fetching (Now uses the 'since' parameter) ---
+  const fetchFireData = (isInitialLoad = false) => {
+    if (isInitialLoad && !isAoiSet) {
+      console.log("Initial load skipped: AOI not set.");
+      return;
+    }
+    
     console.log("Fetching fire data from /api/fires...");
     setIsLoading(true);
     setError(null);
     
-    fetch(`${process.env.REACT_APP_API_URL}/api/fires`)
+    // Get the time parameter for the API call
+    const since = getSinceParam();
+    
+    fetch(`${process.env.REACT_APP_API_URL}/api/fires?since=${since}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error('Network response was not ok');
@@ -84,13 +126,14 @@ function MapComponent() {
           ...fire,
           lat: Number(fire.latitude),
           lng: Number(fire.longitude),
-          // Using the correct 'datetime' field from your validated data
           timestamp: new Date(fire.datetime).getTime() 
         })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
         
         setAllFires(cleanedFires);
-        setFilteredFires(cleanedFires);
         setIsLoading(false);
+        
+        // Apply filters immediately after fetch
+        applyFilters(cleanedFires, confidenceFilters, timeRange, daysSlider);
       })
       .catch((err) => {
         console.error('Failed to load fire data:', err);
@@ -99,54 +142,62 @@ function MapComponent() {
       });
   };
 
-  // Initial data load
-  useEffect(() => {
-    fetchFireData();
-  }, []);
-
-  // Filtering logic (no changes)
-  useEffect(() => {
-    if (allFires.length === 0 && !isLoading) return; 
-    let filtered = [...allFires];
-    const activeConfidenceLevels = Object.keys(confidenceFilters)
-      .filter(level => confidenceFilters[level])
+  // --- Dedicated Filtering Logic (no longer needed in a useEffect) ---
+  const applyFilters = (fires, confFilters) => {
+    let filtered = [...fires];
+    const activeConfidenceLevels = Object.keys(confFilters)
+      .filter(level => confFilters[level])
       .map(level => parseInt(level));
     
+    // Apply Confidence Filter
     if (activeConfidenceLevels.length < 4) {
-        if (activeConfidenceLevels.length === 0) {
-            filtered = [];
-        } else {
-            filtered = filtered.filter(fire => 
-                activeConfidenceLevels.includes(fire.confidence_level)
-            );
-        }
+        filtered = filtered.filter(fire => 
+            activeConfidenceLevels.includes(fire.confidence_level)
+        );
     }
     
-    const now = new Date().getTime();
-    switch(timeRange) {
-      case '24h':
-        filtered = filtered.filter(fire => now - fire.timestamp <= 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        filtered = filtered.filter(fire => now - fire.timestamp <= 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        filtered = filtered.filter(fire => now - fire.timestamp <= 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        break;
-    }
+    // NOTE: We don't need a time filter here because the API query already filtered the data based on 'since'.
     
     setFilteredFires(filtered);
-  }, [allFires, confidenceFilters, timeRange, isLoading]);
+  };
 
-  // --- Filter Handlers (no changes) ---
+  // Initial data load check (Wait for AOI to be set)
+  useEffect(() => {
+    if (isAoiSet) {
+      fetchFireData(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAoiSet]);
+
+  // Run filter only on confidence/time range change (time range now triggers a fetch)
+  useEffect(() => {
+    applyFilters(allFires, confidenceFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFires, confidenceFilters]);
+
+
+  // --- Time Range Handlers ---
   const toggleConfidenceFilter = (level) => {
     setConfidenceFilters(prev => ({ ...prev, [level]: !prev[level] }));
   };
 
-  const handleTimeRangeChange = (range) => {
+  const handleTimeRangeChange = (range, days) => {
     setTimeRange(range);
+    if (range === 'daysSlider') {
+      setDaysSlider(days);
+    }
+    // Trigger a new fetch when the time range changes
+    // This will use the new state values in getSinceParam()
+    setTimeout(fetchFireData, 0); 
+  };
+  
+  const handleDaysSliderChange = (e) => {
+    const days = parseInt(e.target.value);
+    setDaysSlider(days);
+    // If the timeRange is already 'daysSlider', trigger a new fetch
+    if (timeRange === 'daysSlider') {
+      setTimeout(fetchFireData, 0); 
+    }
   };
 
   // --- AOI Form Handlers ---
@@ -154,16 +205,31 @@ function MapComponent() {
     const { name, value } = e.target;
     setAoiInputs(prev => ({ ...prev, [name]: value }));
   };
+  
+  const handleInitialBboxChange = (e) => {
+    const { name, value } = e.target;
+    setInitialBbox(prev => ({ ...prev, [name]: value }));
+  }
 
   const clearAoiInputs = () => {
     setAoiInputs({ latMin: '', latMax: '', lonMin: '', lonMax: '' });
   };
 
-  // --- NEW: Refactored Core Pipeline Function ---
+  // --- Core Pipeline Function ---
   const triggerPipelineRun = async (bbox_str, isReset = false) => {
-    if (updateStatus !== 'idle') return; // Prevent multiple clicks
+    if (updateStatus !== 'idle') return;
     setUpdateStatus(isReset ? 'resetting' : 'applying');
     setError(null);
+
+    // If a BBOX is provided (not empty string), set the AOI as active
+    if (bbox_str) {
+      setIsAoiSet(true);
+    } else {
+      // If BBOX is empty (reset/initial empty)
+      setAllFires([]);
+      setFilteredFires([]);
+      setIsAoiSet(false);
+    }
 
     console.log("Triggering pipeline run with BBOX:", bbox_str);
 
@@ -171,62 +237,136 @@ function MapComponent() {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/run-pipeline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bbox: bbox_str }) // Send the bbox (or null for default)
+        body: JSON.stringify({ bbox: bbox_str })
       });
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to trigger pipeline');
 
       console.log("Pipeline trigger response:", result.message);
-      console.log("Waiting 15 seconds for pipeline...");
-      await sleep(15000); 
+      // Only wait and fetch if a BBOX was provided, otherwise, we're done (cleared data)
+      if (bbox_str) {
+        console.log("Waiting 15 seconds for pipeline...");
+        await sleep(15000); 
 
-      console.log("Fetching new fire data...");
-      fetchFireData(); // This will set isLoading(false) when done
+        console.log("Fetching new fire data...");
+        // Re-fetch with the current time filter settings
+        fetchFireData(); 
+      }
 
     } catch (err) {
       console.error('Failed to update AOI:', err);
       setError('Failed to update Area of Interest.');
     } finally {
-      setUpdateStatus('idle'); // Set status back to idle
+      setUpdateStatus('idle');
     }
   };
-
-  // --- MODIFIED: "Apply" button handler ---
-  const handleUpdateAOI = () => {
-    const { latMin, latMax, lonMin, lonMax } = aoiInputs;
+  
+  // --- MODIFIED: "Apply" button handler logic (shared with initial prompt) ---
+  const handleApplyBbox = (inputs) => {
+    const { latMin, latMax, lonMin, lonMax } = inputs;
     const allFilled = latMin && latMax && lonMin && lonMax;
-    const allEmpty = !latMin && !latMax && !lonMin && !lonMax;
-
+    
     if (allFilled) {
-      // Case 1: All fields filled. Send the custom BBOX.
       const bbox_str = [lonMin, latMin, lonMax, latMax].join(',');
+      // Update the sidebar inputs to reflect the newly set AOI
+      setAoiInputs(inputs);
       triggerPipelineRun(bbox_str, false);
-    } else if (allEmpty) {
-      // Case 2: All fields empty. Trigger a default reset.
-      console.log("Empty fields, resetting to default AOI.");
-      triggerPipelineRun(null, true); // `null` tells the backend to use default
     } else {
-      // Case 3: Partially filled. Show an error.
-      setError("Please fill all fields, or clear all fields to reset to default.");
+      setError("Please fill all four coordinates to set the Area of Interest.");
     }
+  }
+
+  // --- "Apply AOI" in Sidebar handler ---
+  const handleUpdateAOI = () => {
+    // Use the same logic, passing the current sidebar inputs
+    handleApplyBbox(aoiInputs);
   };
 
-  // --- NEW: "Clear & Reset" button handler ---
+  // --- "Clear & Reset" button handler ---
   const handleClearAndResetAOI = () => {
     if (updateStatus !== 'idle') return;
     clearAoiInputs();
-    triggerPipelineRun(null, true); // `null` tells the backend to use default
+    // Pass an empty string, which the pipeline will use as DEFAULT_BBOX
+    triggerPipelineRun("", true); 
   };
 
 
-  // --- Main loading spinner (no changes) ---
-  if (isLoading && allFires.length === 0) {
+  // --- Initial BBOX Prompt Render ---
+  if (!isAoiSet && allFires.length === 0 && updateStatus === 'idle') {
+    return (
+      <div className="map-container">
+        <div className="initial-prompt-overlay">
+          <div className="initial-prompt-box">
+            <h2>🌎 Define Area of Interest</h2>
+            <p>Enter the bounding box coordinates (min/max longitude and latitude) to load fire data.</p>
+            <div className="aoi-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Latitude Min</label>
+                  <input 
+                    type="number" 
+                    placeholder={`e.g., ${DEFAULT_AOI_HINTS.latMin}`} 
+                    name="latMin"
+                    value={initialBbox.latMin}
+                    onChange={handleInitialBboxChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Latitude Max</label>
+                  <input 
+                    type="number" 
+                    placeholder={`e.g., ${DEFAULT_AOI_HINTS.latMax}`} 
+                    name="latMax"
+                    value={initialBbox.latMax}
+                    onChange={handleInitialBboxChange}
+                  />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Longitude Min</label>
+                  <input 
+                    type="number" 
+                    placeholder={`e.g., ${DEFAULT_AOI_HINTS.lonMin}`} 
+                    name="lonMin"
+                    value={initialBbox.lonMin}
+                    onChange={handleInitialBboxChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Longitude Max</label>
+                  <input 
+                    type="number" 
+                    placeholder={`e.g., ${DEFAULT_AOI_HINTS.lonMax}`}
+                    name="lonMax"
+                    value={initialBbox.lonMax}
+                    onChange={handleInitialBboxChange}
+                  />
+                </div>
+              </div>
+            </div>
+            <button 
+              className="apply-btn"
+              onClick={() => handleApplyBbox(initialBbox)}
+              disabled={updateStatus !== 'idle'}
+            >
+              Apply AOI & Load Data
+            </button>
+            {error && <p className="error-text">❌ {error}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // --- Main Loading Spinner and Overlay are unchanged/adjusted for new states ---
+  if (isLoading && allFires.length === 0 && isAoiSet) {
     return (
       <div className="map-container">
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
-          <p>Loading fire data...</p>
+          <p>Loading initial fire data...</p>
         </div>
       </div>
     );
@@ -234,17 +374,17 @@ function MapComponent() {
 
   return (
     <div className="map-container">
-      {/* --- Secondary Loader (Uses new state) --- */}
+      {/* Secondary Loader */}
       {updateStatus !== 'idle' && (
         <div className="loading-overlay transparent">
             <div className="loading-spinner"></div>
             <p>
-              {updateStatus === 'applying' ? 'Applying new AOI...' : 'Resetting to default...'}
+              {updateStatus === 'applying' ? 'Applying new AOI and fetching data...' : 'Resetting AOI and clearing data...'}
             </p>
         </div>
       )}
 
-      {/* Error Display (no changes) */}
+      {/* Error Display */}
       {error && (
           <div className="error-banner">
               <p>{error}</p>
@@ -252,9 +392,9 @@ function MapComponent() {
           </div>
       )}
 
-      {/* MapContainer (no changes) */}
       <MapContainer
-        center={[58.5, -104.0]}
+        // Initial center (using the old default BBOX center as a fallback visual)
+        center={[57.05, -105.3]} 
         zoom={5}
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
@@ -285,20 +425,22 @@ function MapComponent() {
         ))}
       </MapContainer>
 
-      {/* --- MODIFIED: Pass all the new props --- */}
       <SidebarPanel 
         fireCount={filteredFires.length} 
         totalFireCount={allFires.length}
         confidenceFilters={confidenceFilters}
         toggleConfidenceFilter={toggleConfidenceFilter}
+        // --- Pass new time props ---
         timeRange={timeRange}
         handleTimeRangeChange={handleTimeRangeChange}
-        // --- Pass all new/modified AOI props ---
+        daysSlider={daysSlider}
+        handleDaysSliderChange={handleDaysSliderChange}
+        // --- AOI props ---
         handleUpdateAOI={handleUpdateAOI}
-        updateStatus={updateStatus} // Replaces isUpdatingAOI
+        updateStatus={updateStatus}
         aoiInputs={aoiInputs}
         handleAoiInputChange={handleAoiInputChange}
-        handleClearAndResetAOI={handleClearAndResetAOI} // New prop
+        handleClearAndResetAOI={handleClearAndResetAOI}
       />
     </div>
   );
