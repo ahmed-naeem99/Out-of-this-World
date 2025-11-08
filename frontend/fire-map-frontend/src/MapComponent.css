@@ -89,8 +89,8 @@
 }
 
 .loading-overlay.transparent {
-    background-color: rgba(18, 18, 24, 0.6); 
-    z-index: 999;
+  background-color: rgba(18, 18, 24, 0.6); 
+  z-index: 999;
 }
 
 .loading-spinner {
@@ -107,115 +107,6 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-
-/* --- Initial AOI Prompt Styles (FIXED) --- */
-.initial-prompt-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(18, 18, 24, 0.95);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 1010;
-    color: var(--light);
-}
-
-.initial-prompt-box {
-    background: var(--dark);
-    border-radius: 16px;
-    /* --- MODIFIED: Better proportions (more padding) --- */
-    padding: 32px 40px; 
-    /* --- MODIFIED: Narrower width --- */
-    width: 530px;
-    max-width: 90%;
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.initial-prompt-box h2 {
-    color: var(--primary);
-    font-size: 1.5rem;
-    /* --- MODIFIED: More spacing --- */
-    margin-bottom: 12px; 
-}
-
-.initial-prompt-box p {
-    color: rgba(245, 245, 245, 0.7);
-    /* --- MODIFIED: More spacing --- */
-    margin-bottom: 24px; 
-}
-
-.initial-prompt-box .aoi-form {
-    display: flex;
-    flex-direction: column;
-    /* --- MODIFIED: More spacing --- */
-    gap: 20px;
-    margin-bottom: 24px; 
-}
-
-.initial-prompt-box .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    /* --- MODIFIED: More spacing --- */
-    gap: 16px;
-}
-
-.initial-prompt-box .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    text-align: left;
-}
-
-.initial-prompt-box .form-group label {
-    /* --- MODIFIED: More readable --- */
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--secondary);
-}
-
-.initial-prompt-box .form-group input {
-    /* --- MODIFIED: More substantial padding --- */
-    padding: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    /* --- MODIFIED: Larger text --- */
-    font-size: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--light);
-}
-
-.initial-prompt-box .apply-btn {
-    width: 100%;
-    /* --- MODIFIED: Taller button --- */
-    padding: 14px;
-    font-size: 1rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, rgba(255, 94, 91, 0.6) 0%, var(--primary) 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.initial-prompt-box .apply-btn:hover {
-    background: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 94, 91, 0.3);
-}
-
-.error-text {
-    color: var(--danger);
-    margin-top: 15px;
-    font-weight: 500;
-}
-/* --- End Initial AOI Prompt Styles --- */
 
 /* --- Leaflet Popup/Marker Styles --- */
 .custom-popup .leaflet-popup-content-wrapper {
