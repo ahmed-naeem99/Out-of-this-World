@@ -285,6 +285,31 @@ function MapComponent() {
     triggerPipelineRun("", true); 
   };
 
+  // Time formatting 
+  const formatFireTimeUTC = (fire) => {
+  if (!fire.acq_time || !fire.acq_date) return 'N/A';
+
+  // Ensure acq_time has 4 digits, e.g., '0930'
+  const acqTimeStr = fire.acq_time.toString().padStart(4, '0');
+
+  const hours = parseInt(acqTimeStr.slice(0, 2));
+  const minutes = parseInt(acqTimeStr.slice(2, 4));
+
+  // Create a UTC Date object
+  const [year, month, day] = fire.acq_date.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+
+  if (isNaN(date)) return 'Invalid time';
+
+  // Format as hh:mm AM/PM UTC
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'UTC'
+  }) + ' UTC';
+};
+
 
   // --- Initial BBOX Prompt Render ---
   // NO RENDER BLOCK HERE - Pop-up is removed.
@@ -330,9 +355,9 @@ function MapComponent() {
         zoomControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        />
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; OpenStreetMap &copy; CARTO'
+        />
 
 
         {filteredFires.map((fire, index) => (
@@ -344,10 +369,11 @@ function MapComponent() {
             <Popup className="custom-popup">
               <div className="popup-content">
                 <h3>🔥 Fire Detection</h3>
-                <p><strong>Location:</strong> {fire.lat.toFixed(4)}, {fire.lng.toFixed(4)}</p>
+                <p style={{ textAlign: "right" }}><strong>Location:</strong> {fire.lat.toFixed(4)}, {fire.lng.toFixed(4)}</p>
                 <p><strong>Confidence:</strong> {fire.confidence_level}/4</p>
                 <p><strong>Date:</strong> {fire.acq_date}</p>
-                <p><strong>Time:</strong> {fire.acq_time}</p>
+                <p><strong>Time:</strong> {formatFireTimeUTC(fire)}</p>
+
               </div>
             </Popup>
           </Marker>

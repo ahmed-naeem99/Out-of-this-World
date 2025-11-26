@@ -79,7 +79,7 @@ const SidebarPanel = ({
                   className={`time-option ${isToday ? 'active' : ''}`}
                   onClick={() => setSliderViaButton(1)}
                 >
-                  <span className="time-icon">☀️</span>
+                  
                   <span className="time-label">Today</span>
                 </div>
 
@@ -87,7 +87,7 @@ const SidebarPanel = ({
                   className={`time-option ${is7Days ? 'active' : ''}`}
                   onClick={() => setSliderViaButton(7)}
                 >
-                  <span className="time-icon">📅</span>
+                  
                   <span className="time-label">Last 7 Days</span>
                 </div>
               </div>
