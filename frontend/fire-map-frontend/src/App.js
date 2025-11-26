@@ -12,7 +12,7 @@ function App() {
         <div className="navbar-brand">
           <div className="logo-container">
             
-            <h1 className="logo-text">FireWatchNov17</h1>
+            <h1 className="logo-text">FireWatch</h1>
           </div>
           <span className="tagline">Real-time Wildfire Monitoring</span>
         </div>

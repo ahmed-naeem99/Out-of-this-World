@@ -60,13 +60,14 @@ html, body, #root, .App {
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.5px;
+  color: #ffecc8;
 }
 
 .tagline {
   font-size: 0.7rem;
   opacity: 0.8;
   margin-top: 4px;
-  color: #b8b4b4; /* Grey tagline */
+  color: #ffffff; 
 }
 
 /* Navbar Actions */
