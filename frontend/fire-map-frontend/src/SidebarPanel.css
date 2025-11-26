@@ -1,12 +1,12 @@
 /* Define Color Variables (for standalone use) */
 :root {
-  --primary: #FF5E5B; /* Fire/Alert Red */
-  --secondary: #00CECB; /* Accent Cyan */
-  --dark: #1E1E2A;
-  --darker: #121218;
-  --light: #F5F5F5;
-  --accent: #FFED66;
-  --danger: #FF5E5B;
+  --primary: #dc452a;   /* Vibrant Red */
+  --secondary: #a02019; /* Deep Red */
+  --dark: black;        /* Black */
+  --darker: black;      /* Black */
+  --light: #ffecc8;     /* Cream */
+  --subtle: #b8b4b4;    /* Grey */
+  --accent: #dc452a;    /* Vibrant Red Accent */
 }
 
 .sidebar-wrapper {
@@ -22,10 +22,11 @@
   width: 450px;
   max-width: 95vw;
   min-height: 80px;
-  background: rgba(33, 33, 33, 0.555);
+  /* Updated Background to Black with transparency */
+  background: rgba(0, 0, 0, 0.85); 
   backdrop-filter: blur(20px);
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -33,7 +34,7 @@
   /* --- MODIFIED: Base font size increased --- */
   font-size: 0.9rem;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid var(--primary);
+  border: 1px solid var(--secondary); /* Deep Red Border */
   color: var(--light);
   overflow-y: auto;
   overflow-x: hidden;
@@ -69,9 +70,9 @@
   right: 20px;
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(184, 180, 180, 0.1); /* Grey with low opacity */
   border-radius: 10px;
-  border: none;
+  border: 1px solid rgba(184, 180, 180, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -82,7 +83,8 @@
 }
 
 .toggle-button:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(220, 69, 42, 0.2); /* Vibrant Red tint on hover */
+  border-color: var(--primary);
   transform: rotate(90deg);
 }
 
@@ -95,7 +97,7 @@
 }
 
 .panel-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(184, 180, 180, 0.2); /* Grey divider */
   padding-bottom: 20px;
   padding-right: 60px;
   min-height: 40px;
@@ -110,7 +112,7 @@
 }
 
 .fire-count {
-  color: rgba(245, 245, 245, 0.7);
+  color: var(--subtle); /* Grey */
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.95rem;
   display: flex;
@@ -119,12 +121,12 @@
 }
 
 .count {
-  color: #ffffff;
+  color: var(--primary); /* Vibrant Red */
   font-weight: 600;
 }
 
 .total {
-  color: #ffffff;
+  color: var(--light);
   font-weight: 500;
 }
 
@@ -133,7 +135,7 @@
   transition: all 0.4s ease;
   overflow: hidden;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(184, 180, 180, 0.2); /* Grey divider */
 }
 
 .panel-section:last-child {
@@ -142,7 +144,7 @@
 }
 
 .panel-section h3 {
-  color: var(--light);
+  color: var(--primary); /* Vibrant Red Headers */
   margin: 0 0 16px 0;
   /* --- MODIFIED: Font size increased --- */
   font-size: 1.0rem;
@@ -167,19 +169,19 @@
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.9rem;
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(184, 180, 180, 0.05); /* Grey base */
+  border: 1px solid rgba(184, 180, 180, 0.1);
   justify-content: space-between;
 }
 
 .confidence-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(184, 180, 180, 0.1);
+  border-color: rgba(184, 180, 180, 0.3);
   transform: translateY(-2px);
 }
 
 .confidence-toggle.active {
-  background: rgba(255, 94, 91, 0.37);
+  background: rgba(220, 69, 42, 0.15); /* Vibrant Red Tint */
   border-color: var(--primary);
 }
 
@@ -193,7 +195,7 @@
 .toggle-track {
   width: 32px;
   height: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(184, 180, 180, 0.3); /* Grey track */
   border-radius: 20px;
   position: relative;
   margin-right: 12px;
@@ -201,13 +203,13 @@
 }
 
 .confidence-toggle.active .toggle-track {
-  background: var(--primary);
+  background: var(--primary); /* Vibrant Red track */
 }
 
 .toggle-thumb {
   width: 12px;
   height: 12px;
-  background: var(--light);
+  background: var(--subtle); /* Grey thumb */
   border-radius: 50%;
   position: absolute;
   top: 2px;
@@ -217,7 +219,7 @@
 
 .confidence-toggle.active .toggle-thumb {
   left: 22px;
-  background: white;
+  background: var(--light); /* Cream thumb */
 }
 
 .confidence-dot {
@@ -227,10 +229,11 @@
   margin-right: 0;
 }
 
-.confidence-dot.level-1 { background-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
-.confidence-dot.level-2 { background-color: #FFA500; box-shadow: 0 0 10px #FFA500; }
-.confidence-dot.level-3 { background-color: #FF4500; box-shadow: 0 0 10px #FF4500; }
-.confidence-dot.level-4 { background-color: #FF0000; box-shadow: 0 0 10px #FF0000; }
+/* Keeping logic colors but adding glow from palette if desired, or keeping standard */
+.confidence-dot.level-1 { background-color: #b8b4b4; box-shadow: 0 0 5px #b8b4b4; } /* Low = Grey */
+.confidence-dot.level-2 { background-color: #ffecc8; box-shadow: 0 0 5px #ffecc8; } /* Med = Cream */
+.confidence-dot.level-3 { background-color: #dc452a; box-shadow: 0 0 5px #dc452a; } /* High = Vibrant Red */
+.confidence-dot.level-4 { background-color: #a02019; box-shadow: 0 0 5px #a02019; } /* Extreme = Deep Red */
 
 .confidence-label {
   /* --- MODIFIED: Font size increased --- */
@@ -242,7 +245,7 @@
 .confidence-desc {
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.85rem;
-  color: rgba(245, 245, 245, 0.6);
+  color: var(--subtle);
   font-weight: 400;
 }
 
@@ -255,29 +258,31 @@
 .time-option {
   padding: 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(184, 180, 180, 0.05);
   text-align: center;
   cursor: pointer;
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.9rem;
   transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(184, 180, 180, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  color: var(--subtle);
 }
 
 .time-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(184, 180, 180, 0.1);
+  border-color: rgba(184, 180, 180, 0.3);
   transform: translateY(-2px);
 }
 
 .time-option.active {
-  background: rgba(255, 94, 91, 0.57);
+  background: var(--primary); /* Vibrant Red Background */
   border-color: var(--primary);
-  color: white;
+  color: var(--light); /* Cream Text */
+  box-shadow: 0 4px 12px rgba(220, 69, 42, 0.3);
 }
 
 .time-icon {
@@ -289,55 +294,55 @@
 }
 
 .days-slider-container {
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    grid-column: 1 / -1;
-    width: 100%; 
+  padding-top: 16px;
+  border-top: 1px solid rgba(184, 180, 180, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .days-slider-container label {
-    /* --- MODIFIED: Font size increased --- */
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: rgba(245, 245, 245, 0.8);
-    /* --- MODIFIED: Centered the label text --- */
-    text-align: center;
+  /* --- MODIFIED: Font size increased --- */
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--subtle);
+  /* --- MODIFIED: Centered the label text --- */
+  text-align: center;
 }
 
 .days-slider {
-    -webkit-appearance: none; 
-    appearance: none;
-    width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-    cursor: pointer;
-    margin: 0;
-    transition: all 0.3s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(184, 180, 180, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  margin: 0;
+  transition: all 0.3s ease;
 }
 
 .days-slider.active {
-    background: var(--primary);
+  background: var(--secondary); /* Deep Red Track */
 }
 
 .days-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-    border: 2px solid var(--dark);
-    box-shadow: 0 0 5px rgba(255, 94, 91, 0.5);
-    transition: background 0.3s ease, transform 0.3s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary); /* Vibrant Red Thumb */
+  cursor: pointer;
+  border: 2px solid var(--light); /* Cream Border */
+  box-shadow: 0 0 5px rgba(220, 69, 42, 0.5);
+  transition: background 0.3s ease, transform 0.3s ease;
 }
 
 .days-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 .aoi-form {
@@ -362,29 +367,29 @@
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.9rem;
   font-weight: 500;
-  color: rgba(245, 245, 245, 0.8);
+  color: var(--subtle);
 }
 
 .form-group input {
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(184, 180, 180, 0.2);
   border-radius: 6px;
   /* --- MODIFIED: Font size increased --- */
   font-size: 0.95rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.4);
   color: var(--light);
   transition: all 0.3s ease;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--secondary);
-  background: rgba(0, 206, 203, 0.05);
-  box-shadow: 0 0 0 3px rgba(0, 206, 203, 0.1);
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(220, 69, 42, 0.1);
 }
 
 .form-group input::placeholder {
-  color: rgba(245, 245, 245, 0.4);
+  color: rgba(184, 180, 180, 0.4);
 }
 
 .form-actions {
@@ -410,23 +415,24 @@
 }
 
 .apply-btn {
-  background: linear-gradient(135deg, rgba(255, 94, 91, 0.6) 0%, var(--primary) 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  color: var(--light);
 }
 
 .apply-btn:hover {
   background: var(--primary);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 94, 91, 0.3);
+  box-shadow: 0 5px 15px rgba(220, 69, 42, 0.3);
 }
 
 .clear-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--light);
+  background: rgba(184, 180, 180, 0.1);
+  color: var(--subtle);
 }
 
 .clear-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(184, 180, 180, 0.2);
+  color: var(--light);
   transform: translateY(-2px);
 }
 
@@ -436,17 +442,17 @@
 }
 
 .sidebar-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
 }
 
 .sidebar-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(184, 180, 180, 0.2);
   border-radius: 10px;
 }
 
 .sidebar-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(184, 180, 180, 0.4);
 }
 
 /* Responsive design */
