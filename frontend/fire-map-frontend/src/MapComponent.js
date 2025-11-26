@@ -418,7 +418,6 @@ function MapComponent() {
                 <p><strong>Confidence:</strong> {fire.confidence_level}/4</p>
                 <p><strong>Date:</strong> {fire.acq_date}</p>
                 <p><strong>Time:</strong> {fire.acq_time}</p>
-                <p><strong>Sensors:</strong> {fire.validating_sensors}</p>
               </div>
             </Popup>
           </Marker>

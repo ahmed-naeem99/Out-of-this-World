@@ -68,7 +68,7 @@ def status():
 def get_validated_fires():
     since_str = request.args.get('since')
     # Default: last 24 hours
-    since = datetime.now(timezone.utc) - timedelta(days=1)
+    since = datetime.now(timezone.utc) - timedelta(days=7)
 
     if since_str:
         try:

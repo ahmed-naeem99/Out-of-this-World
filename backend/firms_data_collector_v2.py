@@ -9,7 +9,7 @@ MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
 DAYS = str(7)  # Last n day of data from 1-10
 
 # Choose a study area i.e. Manitoba (-98.9,53.9,-96.3,55.1)
-BBOX = ""  # Test area (lon_min,lat_min,lon_max,lat_max)
+BBOX = "-105.0,50,0,-85.0,60.0"  # Test area (lon_min,lat_min,lon_max,lat_max)
 
 # Database setup functions
 

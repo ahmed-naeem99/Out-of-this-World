@@ -21,7 +21,7 @@ VALIDATED_DB = "validated_fires.db"
 VALIDATED_TABLE = "validated_fires"
 
 # --- MODIFIED: Default BBOX is now an empty string for an empty map start ---
-DEFAULT_BBOX = ""
+DEFAULT_BBOX = "-105.0,50.0,-85.0,60.0"
 
 # We keep track of the last BBOX used
 try:
