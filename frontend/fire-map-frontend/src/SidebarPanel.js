@@ -6,11 +6,11 @@ const SidebarPanel = ({
   totalFireCount, 
   confidenceFilters, 
   toggleConfidenceFilter,
-  // --- MODIFIED: New Time Props ---
-  timeRange,
-  handleTimeRangeChange,
-  daysSlider,
-  handleDaysSliderChange,
+  // --- Time Props ---
+  // We ignore 'timeRange' prop for logic now, we just use daysSlider as truth
+  handleTimeRangeChange, // function(mode, days)
+  daysSlider,            // number (1-7)
+  handleDaysSliderChange,// function(e)
   // --- AOI Props ---
   handleUpdateAOI,
   updateStatus,
@@ -21,15 +21,23 @@ const SidebarPanel = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isBusy = updateStatus !== 'idle';
   
-  // Helper function to wrap the time range change for the buttons
-  const handleTimeButtonChange = (value) => {
-    // For the buttons, we pass the range and a default day count
-    if (value === 'today') {
-      handleTimeRangeChange(value, 1);
-    } else if (value === '7d') {
-      handleTimeRangeChange(value, 7);
-    }
-  }
+  // 1. Calculate gradient for the slider track
+  const sliderPercentage = ((daysSlider - 1) / 6) * 100;
+
+  const sliderStyle = {
+    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) 100%)`
+  };
+
+  // 2. Simplified Handler: Buttons just set the slider value
+  const setSliderViaButton = (days) => {
+    // We strictly tell the parent: "The mode is 'daysSlider' and the value is X"
+    handleTimeRangeChange('daysSlider', days);
+  };
+
+  // 3. Determine if we are in a "preset" state (1 or 7) for styling
+  const isToday = daysSlider === 1;
+  const is7Days = daysSlider === 7;
+  const isPresetActive = isToday || is7Days;
 
   return (
     <div className="sidebar-wrapper">
@@ -60,44 +68,60 @@ const SidebarPanel = ({
 
         {!isCollapsed && (
           <div className="panel-content">
-            {/* Time Range - MODIFIED */}
+            
+            {/* Time Range Section */}
             <div className="panel-section">
               <h3>Time Range</h3>
+              
+              {/* Buttons acting as Shortcuts */}
               <div className="time-filter">
-                {[
-                  { value: 'today', label: 'Today', icon: '☀️' },
-                  { value: '7d', label: 'Last 7 Days', icon: '📅' },
-                ].map(option => (
-                  <div 
-                    key={option.value}
-                    // Check if the range is 'daysSlider' and the days match
-                    className={`time-option ${timeRange === option.value ? 'active' : ''}`}
-                    onClick={() => handleTimeButtonChange(option.value)}
-                  >
-                    <span className="time-icon">{option.icon}</span>
-                    <span className="time-label">{option.label}</span>
-                  </div>
-                ))}
+                <div 
+                  className={`time-option ${isToday ? 'active' : ''}`}
+                  onClick={() => setSliderViaButton(1)}
+                >
+                  <span className="time-icon">☀️</span>
+                  <span className="time-label">Today</span>
+                </div>
+
+                <div 
+                  className={`time-option ${is7Days ? 'active' : ''}`}
+                  onClick={() => setSliderViaButton(7)}
+                >
+                  <span className="time-icon">📅</span>
+                  <span className="time-label">Last 7 Days</span>
+                </div>
               </div>
               
-              {/* New Days Slider */}
-              <div className="days-slider-container">
-                <label>Past {daysSlider} Days</label>
+              {/* Slider Section */}
+              {/* We apply 'passive-mode' if a preset (1 or 7) is selected to dim it slightly */}
+              <div className={`days-slider-container ${isPresetActive ? 'passive-mode' : ''}`}>
+                <label>
+                  {isToday ? 'Showing Today' : 
+                   is7Days ? 'Showing Last 7 Days' : 
+                   `Past ${daysSlider} Days`}
+                </label>
+                
                 <input 
                   type="range" 
                   min="1" 
                   max="7" 
                   value={daysSlider}
-                  // Set the range to 'daysSlider' when the user starts dragging/clicking the slider
-                  onMouseDown={() => timeRange !== 'daysSlider' && handleTimeRangeChange('daysSlider', daysSlider)}
-                  onMouseUp={handleDaysSliderChange} // Trigger API call on release
-                  onChange={handleDaysSliderChange} // Update value instantly
-                  className={`days-slider ${timeRange === 'daysSlider' ? 'active' : ''}`}
+                  style={sliderStyle}
+                  // If user drags manually, it works normally
+                  onChange={handleDaysSliderChange}
+                  // Ensure on release we confirm the 'daysSlider' mode
+                  onMouseUp={() => handleTimeRangeChange('daysSlider', daysSlider)}
+                  className={`days-slider ${!isPresetActive ? 'active' : ''}`}
                 />
+                
+                <div className="slider-labels">
+                  <span>1d</span>
+                  <span>7d</span>
+                </div>
               </div>
             </div>
 
-            {/* Confidence Levels (Unchanged) */}
+            {/* Confidence Levels */}
             <div className="panel-section">
               <h3>Confidence Level</h3>
               <div className="confidence-filter">
@@ -125,26 +149,26 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* AOI (Unchanged functionality, new placeholders for context) */}
+            {/* Area of Interest */}
             <div className="panel-section">
               <h3>Area of Interest</h3>
               <div className="aoi-form">
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Latitude Min</label>
+                    <label>Lat Min</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., 53.2" 
+                      placeholder="53.2" 
                       name="latMin"
                       value={aoiInputs.latMin}
                       onChange={handleAoiInputChange}
                     />
                   </div>
                   <div className="form-group">
-                    <label>Latitude Max</label>
+                    <label>Lat Max</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., 60.9" 
+                      placeholder="60.9" 
                       name="latMax"
                       value={aoiInputs.latMax}
                       onChange={handleAoiInputChange}
@@ -153,20 +177,20 @@ const SidebarPanel = ({
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Longitude Min</label>
+                    <label>Lon Min</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., -110.1" 
+                      placeholder="-110.1" 
                       name="lonMin"
                       value={aoiInputs.lonMin}
                       onChange={handleAoiInputChange}
                     />
                   </div>
                   <div className="form-group">
-                    <label>Longitude Max</label>
+                    <label>Lon Max</label>
                     <input 
                       type="number" 
-                      placeholder="e.g., -100.5"
+                      placeholder="-100.5"
                       name="lonMax"
                       value={aoiInputs.lonMax}
                       onChange={handleAoiInputChange}
@@ -186,7 +210,7 @@ const SidebarPanel = ({
                     onClick={handleClearAndResetAOI}
                     disabled={isBusy}
                   >
-                    {updateStatus === 'resetting' ? 'Resetting...' : 'Clear & Reset'}
+                    {updateStatus === 'resetting' ? 'Resetting...' : 'Reset'}
                   </button>
                 </div>
               </div>

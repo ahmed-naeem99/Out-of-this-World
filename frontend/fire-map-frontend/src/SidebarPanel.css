@@ -1,12 +1,10 @@
-/* Define Color Variables (for standalone use) */
+/* Define Color Variables */
 :root {
   --primary: #dc452a;   /* Vibrant Red */
   --secondary: #a02019; /* Deep Red */
   --dark: black;        /* Black */
-  --darker: black;      /* Black */
   --light: #ffecc8;     /* Cream */
   --subtle: #b8b4b4;    /* Grey */
-  --accent: #dc452a;    /* Vibrant Red Accent */
 }
 
 .sidebar-wrapper {
@@ -18,11 +16,9 @@
 }
 
 .sidebar-panel {
-  /* --- CRITICAL FIX: Width must be consistent --- */
   width: 450px;
   max-width: 95vw;
   min-height: 80px;
-  /* Updated Background to Black with transparency */
   background: rgba(0, 0, 0, 0.85); 
   backdrop-filter: blur(20px);
   border-radius: 16px;
@@ -31,37 +27,24 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  /* --- MODIFIED: Base font size increased --- */
   font-size: 0.9rem;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid var(--secondary); /* Deep Red Border */
+  border: 1px solid var(--secondary);
   color: var(--light);
   overflow-y: auto;
-  overflow-x: hidden;
   max-height: 80vh;
 }
 
 .sidebar-panel .panel-content {
   padding: 0;
-  transform-origin: top left;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
 .sidebar-panel.collapsed {
-  /* --- CRITICAL FIX: Collapsed width MUST match panel width --- */
   width: 380px;
   min-height: 80px;
-  overflow: hidden;
-}
-
-.sidebar-panel.collapsed .panel-section {
-  max-height: 0;
-  opacity: 0;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
 }
 
 .toggle-button {
@@ -70,7 +53,7 @@
   right: 20px;
   width: 36px;
   height: 36px;
-  background: rgba(184, 180, 180, 0.1); /* Grey with low opacity */
+  background: rgba(184, 180, 180, 0.1);
   border-radius: 10px;
   border: 1px solid rgba(184, 180, 180, 0.2);
   cursor: pointer;
@@ -83,176 +66,48 @@
 }
 
 .toggle-button:hover {
-  background: rgba(220, 69, 42, 0.2); /* Vibrant Red tint on hover */
+  background: rgba(220, 69, 42, 0.2);
   border-color: var(--primary);
-  transform: rotate(90deg);
-}
-
-.toggle-icon {
-  transition: transform 0.3s ease;
 }
 
 .toggle-icon.collapsed {
   transform: rotate(-180deg);
 }
 
-.panel-header {
-  border-bottom: 1px solid rgba(184, 180, 180, 0.2); /* Grey divider */
-  padding-bottom: 20px;
-  padding-right: 60px;
-  min-height: 40px;
-}
-
 .panel-header h2 {
   color: var(--light);
   margin: 0;
-  /* --- MODIFIED: Font size increased --- */
   font-size: 1.3rem;
   font-weight: 700;
 }
 
 .fire-count {
-  color: var(--subtle); /* Grey */
-  /* --- MODIFIED: Font size increased --- */
+  color: var(--subtle);
   font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  margin-top: 4px;
 }
 
-.count {
-  color: var(--primary); /* Vibrant Red */
-  font-weight: 600;
-}
-
-.total {
-  color: var(--light);
-  font-weight: 500;
-}
+.count { color: var(--primary); font-weight: 600; }
+.total { color: var(--light); font-weight: 500; }
 
 .panel-section {
-  max-height: 500px;
-  transition: all 0.4s ease;
-  overflow: hidden;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(184, 180, 180, 0.2); /* Grey divider */
-}
-
-.panel-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  border-bottom: 1px solid rgba(184, 180, 180, 0.2);
 }
 
 .panel-section h3 {
-  color: var(--primary); /* Vibrant Red Headers */
+  color: var(--primary);
   margin: 0 0 16px 0;
-  /* --- MODIFIED: Font size increased --- */
   font-size: 1.0rem;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.confidence-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.confidence-toggle {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-  background: rgba(184, 180, 180, 0.05); /* Grey base */
-  border: 1px solid rgba(184, 180, 180, 0.1);
-  justify-content: space-between;
-}
-
-.confidence-toggle:hover {
-  background: rgba(184, 180, 180, 0.1);
-  border-color: rgba(184, 180, 180, 0.3);
-  transform: translateY(-2px);
-}
-
-.confidence-toggle.active {
-  background: rgba(220, 69, 42, 0.15); /* Vibrant Red Tint */
-  border-color: var(--primary);
-}
-
-.confidence-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.toggle-track {
-  width: 32px;
-  height: 16px;
-  background: rgba(184, 180, 180, 0.3); /* Grey track */
-  border-radius: 20px;
-  position: relative;
-  margin-right: 12px;
-  transition: all 0.3s ease;
-}
-
-.confidence-toggle.active .toggle-track {
-  background: var(--primary); /* Vibrant Red track */
-}
-
-.toggle-thumb {
-  width: 12px;
-  height: 12px;
-  background: var(--subtle); /* Grey thumb */
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: all 0.3s ease;
-}
-
-.confidence-toggle.active .toggle-thumb {
-  left: 22px;
-  background: var(--light); /* Cream thumb */
-}
-
-.confidence-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 0;
-}
-
-/* Keeping logic colors but adding glow from palette if desired, or keeping standard */
-.confidence-dot.level-1 { background-color: #b8b4b4; box-shadow: 0 0 5px #b8b4b4; } /* Low = Grey */
-.confidence-dot.level-2 { background-color: #ffecc8; box-shadow: 0 0 5px #ffecc8; } /* Med = Cream */
-.confidence-dot.level-3 { background-color: #dc452a; box-shadow: 0 0 5px #dc452a; } /* High = Vibrant Red */
-.confidence-dot.level-4 { background-color: #a02019; box-shadow: 0 0 5px #a02019; } /* Extreme = Deep Red */
-
-.confidence-label {
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--light);
-}
-
-.confidence-desc {
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.85rem;
-  color: var(--subtle);
-  font-weight: 400;
-}
-
+/* --- BUTTONS --- */
 .time-filter {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
 .time-option {
@@ -261,7 +116,6 @@
   background: rgba(184, 180, 180, 0.05);
   text-align: center;
   cursor: pointer;
-  /* --- MODIFIED: Font size increased --- */
   font-size: 0.9rem;
   transition: all 0.3s ease;
   border: 1px solid rgba(184, 180, 180, 0.1);
@@ -278,203 +132,156 @@
   transform: translateY(-2px);
 }
 
+/* Active State for Buttons */
 .time-option.active {
-  background: var(--primary); /* Vibrant Red Background */
+  background: var(--primary);
   border-color: var(--primary);
-  color: var(--light); /* Cream Text */
+  color: var(--light);
   box-shadow: 0 4px 12px rgba(220, 69, 42, 0.3);
 }
 
-.time-icon {
-  font-size: 1.2rem;
-}
+.time-icon { font-size: 1.2rem; }
+.time-label { font-weight: 500; }
 
-.time-label {
-  font-weight: 500;
-}
-
+/* --- SLIDER CONTAINER --- */
 .days-slider-container {
   padding-top: 16px;
   border-top: 1px solid rgba(184, 180, 180, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  grid-column: 1 / -1;
+  gap: 12px;
   width: 100%;
+  transition: all 0.3s ease;
+}
+
+/* Visual "Grey Out" when using Presets (1 or 7 days) */
+.days-slider-container.passive-mode {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+.days-slider-container.passive-mode:hover {
+  opacity: 0.9;
+  filter: grayscale(0);
 }
 
 .days-slider-container label {
-  /* --- MODIFIED: Font size increased --- */
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--subtle);
-  /* --- MODIFIED: Centered the label text --- */
   text-align: center;
 }
 
+/* Slider Input */
 .days-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 6px;
-  background: rgba(184, 180, 180, 0.2);
   border-radius: 3px;
   cursor: pointer;
   margin: 0;
-  transition: all 0.3s ease;
 }
 
-.days-slider.active {
-  background: var(--secondary); /* Deep Red Track */
-}
+.days-slider:focus { outline: none; }
 
+/* Thumb Styling */
 .days-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: var(--primary); /* Vibrant Red Thumb */
+  background: var(--primary);
   cursor: pointer;
-  border: 2px solid var(--light); /* Cream Border */
-  box-shadow: 0 0 5px rgba(220, 69, 42, 0.5);
-  transition: background 0.3s ease, transform 0.3s ease;
+  border: 2px solid var(--light);
+  box-shadow: 0 0 8px rgba(220, 69, 42, 0.6);
+  transition: transform 0.2s ease;
+  margin-top: -6px; 
 }
+.days-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
-.days-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
-}
-
-.aoi-form {
+.slider-labels {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 0.75rem;
+  color: var(--subtle);
 }
 
+/* --- AOI Inputs --- */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
-.form-group label {
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--subtle);
-}
-
 .form-group input {
   padding: 10px;
   border: 1px solid rgba(184, 180, 180, 0.2);
   border-radius: 6px;
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.95rem;
   background: rgba(0, 0, 0, 0.4);
   color: var(--light);
-  transition: all 0.3s ease;
 }
-
 .form-group input:focus {
   outline: none;
   border-color: var(--primary);
-  background: rgba(0, 0, 0, 0.6);
-  box-shadow: 0 0 0 3px rgba(220, 69, 42, 0.1);
 }
 
-.form-group input::placeholder {
-  color: rgba(184, 180, 180, 0.4);
-}
-
+/* --- Actions --- */
 .form-actions {
   display: flex;
   gap: 12px;
   margin-top: 8px;
 }
-
-.apply-btn, .clear-btn {
-  padding: 10px 14px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  /* --- MODIFIED: Font size increased --- */
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 1;
-  font-weight: 500;
-}
-
 .apply-btn {
   background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
   color: var(--light);
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
-
-.apply-btn:hover {
-  background: var(--primary);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(220, 69, 42, 0.3);
-}
-
 .clear-btn {
   background: rgba(184, 180, 180, 0.1);
   color: var(--subtle);
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.clear-btn:hover {
-  background: rgba(184, 180, 180, 0.2);
-  color: var(--light);
-  transform: translateY(-2px);
+/* --- Confidence Toggles (Standard) --- */
+.confidence-filter { display: flex; flex-direction: column; gap: 10px; }
+.confidence-toggle {
+  display: flex; align-items: center; padding: 8px 12px;
+  border-radius: 8px; cursor: pointer;
+  background: rgba(184, 180, 180, 0.05);
+  border: 1px solid rgba(184, 180, 180, 0.1);
 }
-
-/* Scrollbar styling */
-.sidebar-panel::-webkit-scrollbar {
-  width: 6px;
+.confidence-toggle.active {
+  background: rgba(220, 69, 42, 0.15);
+  border-color: var(--primary);
 }
-
-.sidebar-panel::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
+.toggle-track {
+  width: 32px; height: 16px; background: rgba(184, 180, 180, 0.3);
+  border-radius: 20px; position: relative; margin-right: 12px;
 }
-
-.sidebar-panel::-webkit-scrollbar-thumb {
-  background: rgba(184, 180, 180, 0.2);
-  border-radius: 10px;
+.confidence-toggle.active .toggle-track { background: var(--primary); }
+.toggle-thumb {
+  width: 12px; height: 12px; background: var(--subtle);
+  border-radius: 50%; position: absolute; top: 2px; left: 2px;
+  transition: all 0.3s ease;
 }
-
-.sidebar-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(184, 180, 180, 0.4);
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .sidebar-wrapper {
-    top: 10px;
-    left: 10px;
-    right: 10px;
-  }
-  
-  .sidebar-panel {
-    width: auto;
-    right: 10px;
-    /* Allow for more height on mobile */
-    max-height: 85vh;
-  }
-  
-  .time-filter {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-}
+.confidence-toggle.active .toggle-thumb { left: 22px; background: var(--light); }
+.confidence-info { flex: 1; display: flex; gap: 10px; align-items: center; }
+.confidence-dot { width: 10px; height: 10px; border-radius: 50%; }
+.confidence-dot.level-1 { background: #b8b4b4; }
+.confidence-dot.level-2 { background: #ffecc8; }
+.confidence-dot.level-3 { background: #dc452a; }
+.confidence-dot.level-4 { background: #a02019; }
