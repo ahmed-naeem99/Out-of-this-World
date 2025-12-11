@@ -161,6 +161,6 @@ def handle_run_pipeline():
 if __name__ == '__main__':
     # Use 0.0.0.0 to make it accessible on your network (and Lightsail)
     # Your Procfile will override this, but it's good for local testing
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     print(f"Starting Main API Server on http://0.0.0.0:{port}")
     app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
