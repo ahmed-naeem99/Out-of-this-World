@@ -10,6 +10,7 @@
   --light: #ffecc8;     /* Cream */
   --subtle: #b8b4b4;    /* Grey */
   
+  
   --accent: #ffecc8;    /* Mapped Cream to Accent */
   --success: #b8b4b4;   /* Mapped Grey to Success (neutral) or keep green if specific logic requires */
   --warning: #dc452a;   /* Mapped Vibrant Red to Warning */
