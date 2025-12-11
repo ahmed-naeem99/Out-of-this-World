@@ -1,6 +1,4 @@
 import sqlite3
-# Assuming firms_data_collector_v2 is renamed to firms_data_collector for consistency,
-# but using the V2 structure with the provided SENSORS
 from firms_data_collector_v2 import init_all_dbs, fetch_firms, SENSORS
 from fire_alert_validator import validate_fires, initialize_validated_db
 from datetime import datetime, timezone
@@ -21,7 +19,7 @@ VALIDATED_DB = "validated_fires.db"
 VALIDATED_TABLE = "validated_fires"
 
 # --- MODIFIED: Default BBOX is now an empty string for an empty map start ---
-DEFAULT_BBOX = "-105.0,50.0,-85.0,60.0"
+DEFAULT_BBOX = "-122.0,53.0,-110.0,60.0"
 
 # We keep track of the last BBOX used
 try:

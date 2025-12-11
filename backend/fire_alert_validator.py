@@ -87,7 +87,7 @@ def initialize_validated_db():
 
 def validate_fires(primary_db, primary_table, secondary_sources):
     # Get data from last 24 hours
-    since = datetime.now() - timedelta(hours=24)
+    since = datetime.now() - timedelta(days=7)
     
     primary_df = load_detections(primary_db, primary_table, since)
     

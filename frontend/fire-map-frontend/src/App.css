@@ -11,7 +11,9 @@ html, body, #root, .App {
   width: 100%;
   font-family: 'Inter', sans-serif;
   overflow: hidden;
-  background-color: black; /* Base Black */
+  /* Use variable for background */
+  background-color: var(--bg-color, black); 
+  transition: background-color 0.3s ease;
 }
 
 .App {
@@ -23,9 +25,9 @@ html, body, #root, .App {
 /* Navbar */
 .navbar {
   height: 60px;
-  /* Updated Gradient: Deep Red to Vibrant Red */
-  background: linear-gradient(90deg, #a02019 0%, #dc452a 100%);
-  color: #ffecc8; /* Cream Text */
+  /* Use variable for gradient */
+  background: var(--navbar-bg); 
+  color: var(--navbar-text);
   padding: 0 1.7rem;
   display: flex;
   align-items: center;
@@ -33,7 +35,8 @@ html, body, #root, .App {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 1000;
-  border-bottom: 1px solid #a02019;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.3s ease, border-bottom 0.3s ease;
 }
 
 .navbar-brand {
@@ -53,21 +56,21 @@ html, body, #root, .App {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffecc8; /* Cream Icon in header */
+  color: var(--navbar-text);
 }
 
 .logo-text {
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #ffecc8;
+  color: var(--navbar-text);
 }
 
 .tagline {
   font-size: 0.7rem;
   opacity: 0.8;
   margin-top: 4px;
-  color: #ffffff; 
+  color: var(--navbar-text);
 }
 
 /* Navbar Actions */
@@ -82,7 +85,7 @@ html, body, #root, .App {
 .notif-btn {
   background: none;
   border: none;
-  color: #ffecc8; /* Cream */
+  color: var(--navbar-text);
   cursor: pointer;
   transition: transform 0.2s ease;
   display: flex;
@@ -94,7 +97,7 @@ html, body, #root, .App {
 
 .notif-btn:hover {
   transform: scale(1.1);
-  background: rgba(184, 180, 180, 0.1); /* Grey hover */
+  background: rgba(184, 180, 180, 0.1);
 }
 
 /* Notification Panel */
@@ -102,9 +105,9 @@ html, body, #root, .App {
   position: absolute;
   top: 60px;
   right: 100px;
-  background: black; /* Black Background */
-  color: #ffecc8;    /* Cream Text */
-  border: 1px solid #a02019; /* Deep Red Border */
+  background: var(--panel-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
   width: 240px;
@@ -115,7 +118,7 @@ html, body, #root, .App {
 .notif-header {
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #dc452a; /* Vibrant Red Header */
+  color: var(--primary);
 }
 
 .notif-empty {
@@ -123,7 +126,7 @@ html, body, #root, .App {
   opacity: 0.8;
   text-align: center;
   padding: 0.5rem 0;
-  color: #b8b4b4; /* Grey text */
+  color: var(--text-muted);
 }
 
 @keyframes fadeIn {
@@ -133,7 +136,6 @@ html, body, #root, .App {
 
 /* Login Button */
 .login-btn {
-  /* Updated: Cream Background with Deep Red Text for high contrast */
   background: #ffecc8;
   color: #a02019;
   border: none;
@@ -147,7 +149,7 @@ html, body, #root, .App {
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 10px rgba(220, 69, 42, 0.4); /* Vibrant Red Glow */
+  box-shadow: 0 0 10px rgba(220, 69, 42, 0.4);
   background: white;
 }
 
