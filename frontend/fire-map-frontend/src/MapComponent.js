@@ -37,12 +37,22 @@ const createFireIcon = (confidence) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const DEFAULT_MAP_BBOX = {
-  latMin: '50.0',
-  latMax: '60.0',
-  lonMin: '-105.0',
-  lonMax: '-85.0'
+// Parse DEFAULT_BBOX from .env file (format: "lon_min,lat_min,lon_max,lat_max")
+const parseBboxFromEnv = () => {
+  const bboxStr = process.env.REACT_APP_DEFAULT_BBOX;
+  if (!bboxStr) {
+    throw new Error('REACT_APP_DEFAULT_BBOX must be set in .env file');
+  }
+  const [lonMin, latMin, lonMax, latMax] = bboxStr.split(',').map(v => v.trim());
+  return {
+    latMin: latMin,
+    latMax: latMax,
+    lonMin: lonMin,
+    lonMax: lonMax
+  };
 };
+
+const DEFAULT_MAP_BBOX = parseBboxFromEnv();
 
 function MapComponent({ viewMode }) {
   const [allFires, setAllFires] = useState([]);
