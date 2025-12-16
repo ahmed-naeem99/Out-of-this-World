@@ -10,28 +10,11 @@ except ImportError:
     sys.exit(1)
 
 
-def get_last_bbox():
-    """
-    Reads the last-used BBOX from the tracking file.
-    If the file doesn't exist, it returns the default BBOX.
-    """
-    try:
-        with open("last_bbox.txt", "r") as f:
-            bbox_from_file = f.read().strip()
-            if bbox_from_file:
-                return bbox_from_file
-            else:
-                return DEFAULT_BBOX
-    except FileNotFoundError:
-        return DEFAULT_BBOX
-    except Exception as e:
-        return DEFAULT_BBOX
-
-
 def main_loop():
     print("--- Smart Loop Service (15 min) Started ---")
     while True:
-        bbox_to_run = get_last_bbox()
+        # Always use DEFAULT_BBOX from .env file
+        bbox_to_run = DEFAULT_BBOX
         
         try:
             run_pipeline(bbox_str=bbox_to_run)

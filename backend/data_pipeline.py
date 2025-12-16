@@ -1,7 +1,19 @@
 import sqlite3
+import os
+from dotenv import load_dotenv
+from pathlib import Path
 from firms_data_collector_v2 import init_all_dbs, fetch_firms, SENSORS
 from fire_alert_validator import validate_fires, initialize_validated_db
 from datetime import datetime, timezone
+
+# Load .env file from fire-map-frontend folder
+env_path = Path(__file__).parent.parent / 'frontend' / 'fire-map-frontend' / '.env'
+load_dotenv(env_path)
+
+# Read bounding box from REACT_APP_DEFAULT_BBOX in .env file
+DEFAULT_BBOX = os.getenv('REACT_APP_DEFAULT_BBOX')
+if not DEFAULT_BBOX:
+    raise ValueError("REACT_APP_DEFAULT_BBOX must be set in .env file")
 
 # Define which sensor is primary (used for alert validation) and secondary
 PRIMARY = ("viirs.db", "viirs_noaa20")
@@ -18,15 +30,26 @@ ALL_TABLES = [(db, table) for _, db, table in SENSORS]
 VALIDATED_DB = "validated_fires.db"
 VALIDATED_TABLE = "validated_fires"
 
-# --- MODIFIED: Default BBOX is now an empty string for an empty map start ---
-DEFAULT_BBOX = "-122.0,53.0,-110.0,60.0"
+# Track the last BBOX used - stored in a file to persist across runs
+BBOX_TRACKING_FILE = "current_bbox.txt"
 
-# We keep track of the last BBOX used
-try:
-    with open("last_bbox.txt", "r") as f:
-        CURRENT_BBOX_IN_DB = f.read()
-except FileNotFoundError:
-    CURRENT_BBOX_IN_DB = DEFAULT_BBOX
+def get_current_bbox_from_file():
+    """Read the last used BBOX from file, or return None if file doesn't exist"""
+    try:
+        with open(BBOX_TRACKING_FILE, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
+
+def save_current_bbox_to_file(bbox_str):
+    """Save the current BBOX to file"""
+    try:
+        with open(BBOX_TRACKING_FILE, "w") as f:
+            f.write(bbox_str)
+    except Exception as e:
+        print(f"Error writing to {BBOX_TRACKING_FILE}: {e}")
+
+CURRENT_BBOX_IN_DB = get_current_bbox_from_file() or DEFAULT_BBOX
 
 
 def clear_all_data():
@@ -84,14 +107,9 @@ def run_pipeline(bbox_str=None):
     # --- BBOX CHANGE DETECTION & CLEARING LOGIC ---
     if new_bbox != CURRENT_BBOX_IN_DB:
         clear_all_data()
-        # Save the new BBOX as the "current" one
-        try:
-            with open("last_bbox.txt", "w") as f:
-                f.write(new_bbox)
-            CURRENT_BBOX_IN_DB = new_bbox
-            print(f"Updated last_bbox.txt to: {'(EMPTY)' if not new_bbox else new_bbox}")
-        except Exception as e:
-            print(f"Error writing to last_bbox.txt: {e}")
+        CURRENT_BBOX_IN_DB = new_bbox
+        save_current_bbox_to_file(new_bbox)
+        print(f"BBOX changed. Updated to: {'(EMPTY)' if not new_bbox else new_bbox}")
     else:
         print("BBOX is unchanged. Performing standard sync.")
     
