@@ -1,0 +1,6 @@
+python-dotenv
+pandas
+flask
+flask-cors
+geopy
+
