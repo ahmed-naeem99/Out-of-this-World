@@ -101,7 +101,7 @@ def get_validated_fires():
         cur = con.cursor()
 
         cur.execute("""
-            SELECT latitude, longitude, acq_date, acq_time, confidence_level,
+            SELECT latitude, longitude, acq_date, acq_time, confidence_level, confidence_score,
                    primary_sensor, validating_sensors, datetime
             FROM validated_fires
             WHERE datetime >= ?

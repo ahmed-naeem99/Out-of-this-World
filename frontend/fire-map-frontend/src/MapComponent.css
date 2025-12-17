@@ -55,7 +55,7 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
-  background-color: var(--bg-color);
+  background-color: var(--bg-color, #000);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.3s ease;
 }
@@ -68,33 +68,210 @@
   background-color: var(--bg-color);
 }
 
-/* Custom Layer Switcher Button in Navbar */
-.layer-switch-btn {
+.leaflet-tile {
+  border: none !important;
+  outline: none !important;
+  mix-blend-mode: normal;
+}
+
+.leaflet-tile-container img {
+  image-rendering: -webkit-optimize-contrast;
+  shape-rendering: crispEdges;
+}
+
+/* Floating Basemap Menu */
+.floating-basemap-menu {
+  position: absolute;
+  bottom: 120px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.basemap-menu-button {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: var(--navbar-text);
-  padding: 6px 12px;
-  border-radius: 20px;
+  justify-content: center;
   cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
+  border: none;
   transition: all 0.3s ease;
 }
 
-.layer-switch-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+.basemap-menu-button:hover {
+  background: #f5f5f5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-.layer-switch-btn.validated {
-  border-color: #ffecc8;
+.basemap-menu-button svg {
+  color: #333;
+  width: 24px;
+  height: 24px;
 }
 
-.layer-switch-btn.raw {
-  border-color: #b8b4b4;
-  background: rgba(0,0,0,0.5);
+.basemap-menu-options {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  min-width: 180px;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.basemap-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.basemap-option:last-child {
+  border-bottom: none;
+}
+
+.basemap-option:hover {
+  background: #f5f5f5;
+}
+
+.basemap-option.active {
+  background: #e8f4f8;
+}
+
+.basemap-thumbnail {
+  width: 48px;
+  height: 32px;
+  border-radius: 12px;
+  margin-right: 12px;
+  overflow: hidden;
+  border: 2px solid #e0e0e0;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.basemap-option.active .basemap-thumbnail {
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px #dc452a;
+}
+
+.thumbnail-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.thumbnail-preview.streets.dark {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+}
+
+.thumbnail-preview.streets.light {
+  background: linear-gradient(135deg, #f4f4f4 0%, #ffffff 100%);
+}
+
+.thumbnail-preview.satellite {
+  background: linear-gradient(135deg, #2d5016 0%, #5a8a2e 50%, #8fb84f 100%);
+  position: relative;
+}
+
+.thumbnail-preview.satellite::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.1) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(255, 255, 255, 0.1) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.1) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(255, 255, 255, 0.1) 3px
+    );
+}
+
+.basemap-info {
+  flex: 1;
+}
+
+.basemap-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+/* Floating Zoom Controls */
+.floating-zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  gap: 0;
+}
+
+.zoom-btn {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 300;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.zoom-btn:hover {
+  background: #f0f0f0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.zoom-btn:active {
+  background: #e0e0e0;
+}
+
+.zoom-in {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.zoom-out {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: 1px solid #e0e0e0;
 }
 
 /* --- Loader Overlays --- */

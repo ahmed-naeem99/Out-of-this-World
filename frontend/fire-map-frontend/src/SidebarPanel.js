@@ -16,7 +16,7 @@ const SidebarPanel = ({
   updateStatus,
   aoiInputs,
   handleAoiInputChange,
-  handleClearAndResetAOI
+  handleClearAndResetAOI,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isBusy = updateStatus !== 'idle';

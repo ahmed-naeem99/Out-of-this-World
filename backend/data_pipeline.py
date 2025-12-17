@@ -81,7 +81,7 @@ def clear_all_data():
         con = sqlite3.connect(VALIDATED_DB)
         cur = con.cursor()
         print(f"Clearing table: {VALIDATED_TABLE} in {VALIDATED_DB}")
-        cur.execute(f"DELETE FROM {VALIDATED_TABLE}")
+        cur.execute(f"DROP TABLE IF EXISTS {VALIDATED_TABLE}")
         con.commit()
         con.close()
     except Exception as e:

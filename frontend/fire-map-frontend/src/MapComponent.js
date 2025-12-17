@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './MapComponent.css';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, AttributionControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import SidebarPanel from './SidebarPanel';
 
@@ -54,7 +54,34 @@ const parseBboxFromEnv = () => {
 
 const DEFAULT_MAP_BBOX = parseBboxFromEnv();
 
-function MapComponent({ viewMode }) {
+// Component to access map instance for zoom controls
+function ZoomControls({ onZoomIn, onZoomOut }) {
+  return (
+    <div className="floating-zoom-controls">
+      <button className="zoom-btn zoom-in" onClick={onZoomIn} aria-label="Zoom in">
+        +
+      </button>
+      <button className="zoom-btn zoom-out" onClick={onZoomOut} aria-label="Zoom out">
+        −
+      </button>
+    </div>
+  );
+}
+
+// Component to get map instance and expose zoom functions
+function MapZoomHandler({ onMapReady }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (map && onMapReady) {
+      onMapReady(map);
+    }
+  }, [map, onMapReady]);
+  
+  return null;
+}
+
+function MapComponent({ viewMode: initialViewMode = 'validated' }) {
   const [allFires, setAllFires] = useState([]);
   const [filteredFires, setFilteredFires] = useState([]);
   const [isAoiSet, setIsAoiSet] = useState(true); 
@@ -69,7 +96,13 @@ function MapComponent({ viewMode }) {
   });
   
   const [timeRange, setTimeRange] = useState('7d'); 
-  const [daysSlider, setDaysSlider] = useState(7); 
+  const [daysSlider, setDaysSlider] = useState(7);
+  const [basemap, setBasemap] = useState('streets'); // 'streets' or 'satellite'
+  const [mapInstance, setMapInstance] = useState(null);
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false); 
+
+  // Use the viewMode prop directly
+  const currentViewMode = initialViewMode;
 
   const getSinceParam = () => {
     const now = new Date();
@@ -91,10 +124,10 @@ function MapComponent({ viewMode }) {
   const fetchFireData = (isInitialLoad = false) => {
     if (isInitialLoad && !isAoiSet) return;
     
-    // Choose endpoint based on viewMode
-    const endpoint = viewMode === 'raw' ? '/api/raw_fires' : '/api/fires';
+    // Choose endpoint based on currentViewMode
+    const endpoint = currentViewMode === 'raw' ? '/api/raw_fires' : '/api/fires';
 
-    console.log(`Fetching ${viewMode} data from ${endpoint}...`);
+    console.log(`Fetching ${currentViewMode} data from ${endpoint}...`);
     setIsLoading(true);
     setError(null);
     
@@ -112,7 +145,8 @@ function MapComponent({ viewMode }) {
           ...fire,
           lat: Number(fire.latitude),
           lng: Number(fire.longitude),
-          timestamp: new Date(fire.datetime).getTime() 
+          timestamp: new Date(fire.datetime).getTime(),
+          confidence_score: fire.confidence_score !== undefined ? fire.confidence_score : null
         })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
         
         setAllFires(cleanedFires);
@@ -147,11 +181,28 @@ function MapComponent({ viewMode }) {
     setFilteredFires(filtered);
   };
 
-  // Trigger fetch when viewMode changes
+  // Trigger fetch when viewMode prop changes
   useEffect(() => {
     fetchFireData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]); 
+  }, [initialViewMode]);
+
+  // Close basemap menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (basemapMenuOpen && !event.target.closest('.floating-basemap-menu')) {
+        setBasemapMenuOpen(false);
+      }
+    };
+
+    if (basemapMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [basemapMenuOpen]); 
 
   // Initial Pipeline Trigger on Mount
   useEffect(() => {
@@ -277,6 +328,23 @@ function MapComponent({ viewMode }) {
     triggerPipelineRun("", true); 
   };
 
+  const handleBasemapSelect = (selectedBasemap) => {
+    setBasemap(selectedBasemap);
+    setBasemapMenuOpen(false);
+  };
+
+  const handleZoomIn = () => {
+    if (mapInstance) {
+      mapInstance.zoomIn();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstance) {
+      mapInstance.zoomOut();
+    }
+  };
+
   const formatFireTimeUTC = (fire) => {
   if (!fire.acq_time || !fire.acq_date) return 'N/A';
   const acqTimeStr = fire.acq_time.toString().padStart(4, '0');
@@ -299,7 +367,7 @@ function MapComponent({ viewMode }) {
       <div className="map-container">
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
-          <p>Loading {viewMode === 'raw' ? 'Raw Sensor' : 'Validated'} data...</p>
+          <p>Loading {currentViewMode === 'raw' ? 'Raw Sensor' : 'Validated'} data...</p>
         </div>
       </div>
     );
@@ -329,16 +397,32 @@ function MapComponent({ viewMode }) {
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
         zoomControl={false}
+        attributionControl={false}
       >
-        {viewMode === 'validated' ? (
-             <TileLayer
-             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-             attribution='&copy; OpenStreetMap &copy; CARTO'
-           />
+        <AttributionControl position="bottomleft" />
+        {basemap === 'satellite' ? (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            noWrap={false}
+            tileSize={512}
+            keepBuffer={10}
+          />
+        ) : basemap === 'streets' && currentViewMode === 'validated' ? (
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; OpenStreetMap &copy; CARTO'
+            noWrap={false}
+            tileSize={512}
+            keepBuffer={10}
+          />
         ) : (
-            <TileLayer
+          <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; OpenStreetMap &copy; CARTO'
+            noWrap={false}
+            tileSize={512}
+            keepBuffer={10}
           />
         )}
 
@@ -351,9 +435,11 @@ function MapComponent({ viewMode }) {
           >
             <Popup className="custom-popup">
               <div className="popup-content">
-                <h3>{viewMode === 'raw' ? '📡 Raw Sensor Detection' : '🔥 Validated Fire'}</h3>
+                <h3>{currentViewMode === 'raw' ? '📡 Raw Sensor Detection' : '🔥 Validated Fire'}</h3>
                 <p style={{ textAlign: "right" }}><strong>Location:</strong> {fire.lat.toFixed(4)}, {fire.lng.toFixed(4)}</p>
-                <p><strong>Confidence:</strong> {fire.confidence_level}/4</p>
+                {fire.confidence_score !== null && fire.confidence_score !== undefined && (
+                  <p><strong>Confidence Score:</strong> {fire.confidence_score.toFixed(1)}%</p>
+                )}
                 <p><strong>Source:</strong> {fire.primary_sensor}</p>
                 <p><strong>Date:</strong> {fire.acq_date}</p>
                 <p><strong>Time:</strong> {formatFireTimeUTC(fire)}</p>
@@ -361,7 +447,53 @@ function MapComponent({ viewMode }) {
             </Popup>
           </Marker>
         ))}
+        <MapZoomHandler onMapReady={setMapInstance} />
       </MapContainer>
+
+      {/* Floating Zoom Controls */}
+      <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+
+      {/* Floating Basemap Toggle Menu */}
+      <div className="floating-basemap-menu">
+        <button 
+          className="basemap-menu-button" 
+          onClick={() => setBasemapMenuOpen(!basemapMenuOpen)}
+          aria-label="Basemap menu"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        
+        {basemapMenuOpen && (
+          <div className="basemap-menu-options">
+            <div 
+              className={`basemap-option ${basemap === 'streets' ? 'active' : ''}`}
+              onClick={() => handleBasemapSelect('streets')}
+            >
+              <div className="basemap-thumbnail">
+                <div className={`thumbnail-preview streets ${currentViewMode === 'validated' ? 'light' : 'dark'}`}></div>
+              </div>
+              <div className="basemap-info">
+                <div className="basemap-label">Map</div>
+              </div>
+            </div>
+            <div 
+              className={`basemap-option ${basemap === 'satellite' ? 'active' : ''}`}
+              onClick={() => handleBasemapSelect('satellite')}
+            >
+              <div className="basemap-thumbnail">
+                <div className="thumbnail-preview satellite"></div>
+              </div>
+              <div className="basemap-info">
+                <div className="basemap-label">Satellite</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <SidebarPanel 
         fireCount={filteredFires.length} 
