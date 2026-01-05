@@ -17,16 +17,16 @@ const createFireIcon = (confidence) => {
   // Level 1 (40-60): Orange
   // Level 2 (60-85): Dark Orange
   // Level 3 (85+): Red
-  const colors = ['#FFA500', '#FF4500', '#FF0000']; 
-  const sizes = [22, 26, 30]; 
-  
+  const colors = ['#FFA500', '#FF4500', '#FF0000'];
+  const sizes = [22, 26, 30];
+
   // Array index is level - 1 (e.g. Level 1 -> index 0)
   const index = Math.max(0, Math.min(confidence - 1, 2));
-  
+
   const color = colors[index];
   const size = sizes[index];
-  const anchor = size / 2; 
-  
+  const anchor = size / 2;
+
   return L.divIcon({
     html: `
       <div class="fire-marker-container" style="width: ${size}px; height: ${size}px;">
