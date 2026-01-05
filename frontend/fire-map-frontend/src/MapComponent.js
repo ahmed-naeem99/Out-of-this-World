@@ -18,7 +18,7 @@ const createFireIcon = (confidence) => {
   const sizes = [20, 24, 28, 32];
   const color = colors[confidence - 1] || 'gray';
   const size = sizes[confidence - 1] || 24;
-  
+   
   return L.divIcon({
     html: `
       <div class="fire-marker-container" style="width: ${size}px; height: ${size}px;">
