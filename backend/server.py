@@ -21,17 +21,32 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)
 
-VALIDATED_DB = "validated_fires.db"
+# Centralize path logic
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Standardize DB paths
+VALIDATED_DB = os.path.join(BASE_DIR, "validated_fires.db")
+VIIRS_DB = os.path.join(BASE_DIR, "viirs.db")
+MODIS_DB = os.path.join(BASE_DIR, "modis.db")
+LANDSAT_DB = os.path.join(BASE_DIR, "landsat.db")
+GOES_DB = os.path.join(BASE_DIR, "goes.db")
 is_pipeline_running = False
 
 # --- Helper to normalize confidence to 1-4 scale for frontend ---
 def normalize_confidence(conf_val):
-    # VIIRS uses 'l', 'n', 'h'
-    if str(conf_val).lower() in ['l', 'low']: return 2
-    if str(conf_val).lower() in ['n', 'nominal']: return 3
-    if str(conf_val).lower() in ['h', 'high']: return 4
+    # VIIRS uses 'l', 'n', 'h' (lowercase)
+    conf_str = str(conf_val).lower()
+    if conf_str in ['l', 'low']: return 2
+    if conf_str in ['n', 'nominal']: return 3
+    if conf_str in ['h', 'high']: return 4
     
-    # MODIS uses 0-100
+    # Landsat/MODIS uses 'L', 'M', 'H' (uppercase) or 0-100
+    conf_str_upper = str(conf_val).upper()
+    if conf_str_upper in ['L', 'LOW']: return 2
+    if conf_str_upper in ['M', 'MEDIUM', 'NOMINAL']: return 3
+    if conf_str_upper in ['H', 'HIGH']: return 4
+    
+    # MODIS/Landsat numeric confidence (0-100)
     try:
         val = int(conf_val)
         if val >= 80: return 4
@@ -53,7 +68,7 @@ def home():
             "/api/fires": "Get validated fire data",
             "/api/raw_fires": "Get raw sensor data",
             "/api/status": "Check server status",
-            "/api/run-pipeline": "POST to trigger a new data pull for an AOI"
+            "/api/run-pipeline": "POST to filter and validate data for an AOI (demo mode)"
         },
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
@@ -82,38 +97,75 @@ def status():
 
 @app.route('/api/fires')
 def get_validated_fires():
-    since_str = request.args.get('since')
-    since = datetime.now(timezone.utc) - timedelta(days=7)
-
-    if since_str:
-        try:
-            since = datetime.fromisoformat(since_str.replace('Z', '+00:00'))
-            if since.tzinfo is None:
-                since = since.replace(tzinfo=timezone.utc)
-        except ValueError:
-            return jsonify({
-                "error": "Invalid 'since' datetime format."
-            }), 400
-
+    print(f"DEBUG: Querying DB at {VALIDATED_DB}")
+    
     try:
-        con = sqlite3.connect(VALIDATED_DB)
+        # Check if database file exists
+        if not os.path.exists(VALIDATED_DB):
+            print(f"WARNING: Database file not found at {VALIDATED_DB}, returning empty list")
+            return jsonify([])
+        
+        con = sqlite3.connect(VALIDATED_DB, timeout=5.0)
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
+        # Check if table exists
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='validated_fires'")
+        if not cur.fetchone():
+            print("WARNING: Table 'validated_fires' does not exist, returning empty list")
+            con.close()
+            return jsonify([])
+
+        # Remove date filtering - return all validated fires ordered by confidence_score DESC
+        # Include raw_primary_confidence field for verification
         cur.execute("""
             SELECT latitude, longitude, acq_date, acq_time, confidence_level, confidence_score,
-                   primary_sensor, validating_sensors, datetime
+                   primary_sensor, validating_sensors, datetime, raw_primary_confidence
             FROM validated_fires
-            WHERE datetime >= ?
-            ORDER BY datetime DESC
-        """, (since.isoformat(),))
+            ORDER BY confidence_score DESC
+        """)
 
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = []
+        for row in cur.fetchall():
+            row_dict = dict(row)
+            # Fallback: if confidence_score is missing or NULL, calculate from confidence_level
+            if row_dict.get('confidence_score') is None:
+                row_dict['confidence_score'] = row_dict.get('confidence_level', 2) * 25.0
+            
+            # Add confidence to primary_sensor field: "viirs_noaa20(n)" or "viirs_noaa20(H)"
+            primary_sensor = row_dict.get('primary_sensor', '')
+            raw_primary_conf = row_dict.get('raw_primary_confidence', 'n')
+            if raw_primary_conf:
+                row_dict['primary_sensor'] = f"{primary_sensor}({raw_primary_conf})"
+            else:
+                row_dict['primary_sensor'] = primary_sensor
+            
+            rows.append(row_dict)
+        
+        # HARD RESET: If table is empty, return [] instead of error
+        if len(rows) == 0:
+            print("HARD RESET: Table is empty, returning empty list")
+            con.close()
+            return jsonify([])
+        
+        print(f"DEBUG: Returning {len(rows)} fires from database")
         con.close()
         return jsonify(rows)
         
+    except sqlite3.OperationalError as e:
+        # Database locked or busy - return empty list instead of error
+        if "locked" in str(e).lower() or "busy" in str(e).lower():
+            print(f"WARNING: Database locked/busy: {str(e)}, returning empty list")
+            return jsonify([])
+        else:
+            print(f"WARNING: Database operational error: {str(e)}, returning empty list")
+            return jsonify([])
     except sqlite3.Error as e:
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        print(f"WARNING: Database error: {str(e)}, returning empty list")
+        return jsonify([])
+    except Exception as e:
+        print(f"WARNING: Unexpected error: {str(e)}, returning empty list")
+        return jsonify([])
 
 # ===================================================================
 #  NEW ENDPOINT: RAW DATA
@@ -121,22 +173,33 @@ def get_validated_fires():
 
 @app.route('/api/raw_fires')
 def get_raw_fires():
-    since_str = request.args.get('since')
-    # Default to 24h for raw data if not specified
-    since = datetime.now(timezone.utc) - timedelta(days=1)
-    if since_str:
-        try:
-            since = datetime.fromisoformat(since_str.replace('Z', '+00:00'))
-            if since.tzinfo is None: since = since.replace(tzinfo=timezone.utc)
-        except ValueError:
-            pass 
-
-    since_date_str = since.strftime('%Y-%m-%d')
+    # Get BBOX parameter if provided
+    bbox_str = request.args.get('bbox')
+    
     all_raw_fires = []
+    
+    # Parse BBOX if provided: "lon_min,lat_min,lon_max,lat_max"
+    bbox_coords = None
+    if bbox_str:
+        try:
+            coords = [float(x.strip()) for x in bbox_str.split(',')]
+            if len(coords) == 4:
+                bbox_coords = {
+                    'lon_min': coords[0],
+                    'lat_min': coords[1],
+                    'lon_max': coords[2],
+                    'lat_max': coords[3]
+                }
+        except:
+            pass  # Invalid BBOX format, ignore
 
     # Iterate over all sensors defined in firms_data_collector_v2
     for sensor_name, db_file, table_name in SENSORS:
         try:
+            # Convert relative path to absolute if needed
+            if not os.path.isabs(db_file):
+                db_file = os.path.join(BASE_DIR, db_file)
+            
             if not os.path.exists(db_file):
                 continue
 
@@ -144,9 +207,39 @@ def get_raw_fires():
             con.row_factory = sqlite3.Row
             cur = con.cursor()
             
-            # Simple date filtering 
-            query = f"SELECT * FROM {table_name} WHERE acq_date >= ?"
-            cur.execute(query, (since_date_str,))
+            # Build query with BBOX filtering if provided
+            if bbox_coords:
+                # Get latest date for date filtering (last 24 hours)
+                cur.execute(f"SELECT MAX(acq_date) FROM {table_name}")
+                latest_date_result = cur.fetchone()
+                if latest_date_result and latest_date_result[0]:
+                    latest_date = latest_date_result[0]
+                    query = f"""SELECT * FROM {table_name} 
+                                WHERE acq_date >= ? 
+                                AND latitude >= ? AND latitude <= ? 
+                                AND longitude >= ? AND longitude <= ?"""
+                    cur.execute(query, (
+                        latest_date,
+                        bbox_coords['lat_min'],
+                        bbox_coords['lat_max'],
+                        bbox_coords['lon_min'],
+                        bbox_coords['lon_max']
+                    ))
+                else:
+                    query = f"""SELECT * FROM {table_name} 
+                                WHERE latitude >= ? AND latitude <= ? 
+                                AND longitude >= ? AND longitude <= ?"""
+                    cur.execute(query, (
+                        bbox_coords['lat_min'],
+                        bbox_coords['lat_max'],
+                        bbox_coords['lon_min'],
+                        bbox_coords['lon_max']
+                    ))
+            else:
+                # No BBOX: limit to most recent 1000 fires only
+                query = f"SELECT * FROM {table_name} ORDER BY acq_date DESC, acq_time DESC LIMIT 1000"
+                cur.execute(query)
+            
             rows = cur.fetchall()
             
             for row in rows:
@@ -191,16 +284,34 @@ def run_pipeline_in_thread(bbox_str):
 @app.route('/api/run-pipeline', methods=['POST'])
 def handle_run_pipeline():
     global is_pipeline_running
+    
+    # Robust lock check: check multiple times to prevent race conditions
     if is_pipeline_running:
-        # 429 indicates specific "Too Many Requests" state
+        print("WARNING: Pipeline already running, rejecting request")
+        return jsonify({"message": "Pipeline is already running. Please wait."}), 429 
+    
+    # Double-check after a tiny delay to catch race conditions
+    import time
+    time.sleep(0.01)  # 10ms delay
+    if is_pipeline_running:
+        print("WARNING: Pipeline started between checks, rejecting request")
         return jsonify({"message": "Pipeline is already running. Please wait."}), 429 
 
     try:
         data = request.get_json()
         bbox_str = data.get('bbox', DEFAULT_BBOX)
+        
+        # Final check before spawning thread
+        if is_pipeline_running:
+            print("WARNING: Pipeline became active just before thread spawn, rejecting request")
+            return jsonify({"message": "Pipeline is already running. Please wait."}), 429 
+        
+        # Set flag BEFORE starting thread to prevent race condition
+        is_pipeline_running = True
         pipeline_thread = Thread(target=run_pipeline_in_thread, args=(bbox_str,))
         pipeline_thread.start()
         
+        print(f"Pipeline thread spawned successfully for BBOX: {bbox_str}")
         return jsonify({
             "message": "Pipeline execution started.",
             "bbox": bbox_str
@@ -208,6 +319,7 @@ def handle_run_pipeline():
 
     except Exception as e:
         print(f"Error in /api/run-pipeline: {e}")
+        is_pipeline_running = False  # Reset flag on error
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

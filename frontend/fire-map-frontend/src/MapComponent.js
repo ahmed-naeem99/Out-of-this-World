@@ -18,6 +18,7 @@ const createFireIcon = (confidence) => {
   const sizes = [20, 24, 28, 32];
   const color = colors[confidence - 1] || 'gray';
   const size = sizes[confidence - 1] || 24;
+  const anchor = size / 2; // COORDINATE SYNC: Perfectly centered anchor
   
   return L.divIcon({
     html: `
@@ -31,7 +32,7 @@ const createFireIcon = (confidence) => {
     `,
     className: 'fire-marker',
     iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
+    iconAnchor: [anchor, anchor], // COORDINATE SYNC: Perfectly centered
   });
 };
 
@@ -78,6 +79,31 @@ function MapZoomHandler({ onMapReady }) {
     }
   }, [map, onMapReady]);
   
+  // Invalidate size after CSS layout has finished rendering to prevent navbar/sidebar overlap
+  useEffect(() => {
+    if (map) {
+      // Delay to ensure CSS layout has finished rendering
+      const timeoutId = setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [map]);
+  
+  // Invalidate size when sidebar/layout changes
+  useEffect(() => {
+    if (map) {
+      const handleResize = () => {
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 100);
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [map]);
+  
   return null;
 }
 
@@ -104,20 +130,26 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
   // Use the viewMode prop directly
   const currentViewMode = initialViewMode;
 
+  // Demo mode: Use fixed date for August 2025 data
+  const DEMO_NOW = new Date('2025-08-17T23:59:59Z');
+
   const getSinceParam = () => {
-    const now = new Date();
-    let daysToSubtract = 7; 
+    // Anchor to August 10, 2025 to always capture demo data
+    const DEMO_ANCHOR = new Date('2025-08-10T00:00:00Z');
+    let daysToAdd = 0; 
 
     if (timeRange === 'today') {
-      daysToSubtract = 1; 
+      daysToAdd = 7; // Show last day (Aug 10 + 7 = Aug 17)
     } else if (timeRange === 'daysSlider') {
-      daysToSubtract = daysSlider;
+      daysToAdd = 7 - daysSlider; // Adjust based on slider
     } else {
-      daysToSubtract = 7; 
+      daysToAdd = 0; // Show all data from Aug 10
     }
 
-    const sinceDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
-    return sinceDate.toISOString().replace(/\.000Z$/, 'Z'); 
+    const sinceDate = new Date(DEMO_ANCHOR.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    // Ensure we don't go past DEMO_NOW
+    const finalDate = sinceDate > DEMO_NOW ? DEMO_NOW : sinceDate;
+    return finalDate.toISOString().replace(/\.000Z$/, 'Z'); 
   };
 
   // --- Data Fetching ---
@@ -133,7 +165,17 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     
     const since = getSinceParam();
     
-    fetch(`${process.env.REACT_APP_API_URL}${endpoint}?since=${since}`)
+    // Build query parameters
+    let queryParams = `since=${since}`;
+    
+    // For raw mode, pass BBOX to get all of Canada data
+    if (currentViewMode === 'raw') {
+      const { latMin, latMax, lonMin, lonMax } = DEFAULT_MAP_BBOX;
+      const bbox_str = `${lonMin},${latMin},${lonMax},${latMax}`;
+      queryParams += `&bbox=${bbox_str}`;
+    }
+    
+    fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${queryParams}`)
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
@@ -141,13 +183,39 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
       .then((data) => {
         const fireData = Array.isArray(data) ? data : [];
         
-        const cleanedFires = fireData.map(fire => ({
-          ...fire,
-          lat: Number(fire.latitude),
-          lng: Number(fire.longitude),
-          timestamp: new Date(fire.datetime).getTime(),
-          confidence_score: fire.confidence_score !== undefined ? fire.confidence_score : null
-        })).filter(fire => !isNaN(fire.lat) && !isNaN(fire.lng));
+        // REDLINE PROTOCOL: Log first fire data immediately after receiving
+        if (fireData.length > 0) {
+          console.log("FIRST FIRE DATA (raw):", fireData[0].latitude, fireData[0].longitude);
+          console.log("FIRST FIRE DATA (parsed):", parseFloat(fireData[0].latitude), parseFloat(fireData[0].longitude));
+          console.log("FIRST FIRE DATA (type check):", typeof fireData[0].latitude, typeof fireData[0].longitude);
+        }
+        
+        const cleanedFires = fireData.map(fire => {
+          // Convert coordinates to numbers, ensuring proper type
+          const lat = parseFloat(fire.latitude);
+          const lng = parseFloat(fire.longitude);
+          
+          // Validate coordinates are within reasonable bounds for North America
+          if (isNaN(lat) || isNaN(lng)) {
+            console.warn(`Invalid coordinates for fire: lat=${fire.latitude}, lng=${fire.longitude}`);
+            return null;
+          }
+          
+          // Check if coordinates are valid (Alberta/North America bounds)
+          if (lat < 40 || lat > 80 || lng < -150 || lng > -50) {
+            console.warn(`Coordinates out of expected range: lat=${lat}, lng=${lng}`);
+          }
+          
+          return {
+            ...fire,
+            lat: lat,
+            lng: lng,
+            latitude: lat,  // Keep original for compatibility
+            longitude: lng, // Keep original for compatibility
+            timestamp: new Date(fire.datetime).getTime(),
+            confidence_score: fire.confidence_score !== undefined ? fire.confidence_score : null
+          };
+        }).filter(fire => fire !== null && !isNaN(fire.lat) && !isNaN(fire.lng));
         
         setAllFires(cleanedFires);
         setIsLoading(false);
@@ -204,13 +272,9 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     };
   }, [basemapMenuOpen]); 
 
-  // Initial Pipeline Trigger on Mount
+  // Fetch existing data on mount (do NOT trigger pipeline - user must click "Apply AOI")
   useEffect(() => {
-    if (isAoiSet) {
-      const { latMin, latMax, lonMin, lonMax } = DEFAULT_MAP_BBOX;
-      const bbox_str = [lonMin, latMin, lonMax, latMax].join(',');
-      triggerPipelineRun(bbox_str, false);
-    }
+    fetchFireData(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
@@ -218,6 +282,40 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     applyFilters(allFires, confidenceFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allFires, confidenceFilters]);
+
+  // Auto-zoom map to fit all fires when filteredFires changes
+  useEffect(() => {
+    // Safety check: ensure map instance is fully initialized with container before fitBounds
+    if (mapInstance && mapInstance._container && filteredFires.length > 0) {
+      // Extract valid coordinates from filtered fires
+      const bounds = filteredFires
+        .map(fire => {
+          const lat = parseFloat(fire.latitude);
+          const lng = parseFloat(fire.longitude);
+          if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            return [lat, lng];
+          }
+          return null;
+        })
+        .filter(coord => coord !== null);
+
+      if (bounds.length > 0) {
+        // Use requestAnimationFrame or setTimeout to ensure Leaflet DOM is fully ready
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (mapInstance && mapInstance._container) {
+              try {
+                const latlngBounds = L.latLngBounds(bounds);
+                mapInstance.fitBounds(latlngBounds, { padding: [50, 50], maxZoom: 10 });
+              } catch (error) {
+                console.warn("fitBounds error:", error);
+              }
+            }
+          }, 100);
+        });
+      }
+    }
+  }, [filteredFires, mapInstance]);
 
 
   const toggleConfidenceFilter = (level) => {
@@ -392,8 +490,10 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
       )}
 
       <MapContainer
-        center={[55.0, -95.0]}
+        center={[54.5, -114.5]}
         zoom={5}
+        minZoom={3}
+        maxZoom={18}
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
         zoomControl={false}
@@ -427,26 +527,45 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
         )}
 
 
-        {filteredFires.map((fire, index) => (
-          <Marker
-            key={`${fire.lat}-${fire.lng}-${index}`}
-            position={[fire.lat, fire.lng]}
-            icon={createFireIcon(fire.confidence_level)}
-          >
-            <Popup className="custom-popup">
-              <div className="popup-content">
-                <h3>{currentViewMode === 'raw' ? '📡 Raw Sensor Detection' : '🔥 Validated Fire'}</h3>
-                <p style={{ textAlign: "right" }}><strong>Location:</strong> {fire.lat.toFixed(4)}, {fire.lng.toFixed(4)}</p>
-                {fire.confidence_score !== null && fire.confidence_score !== undefined && (
-                  <p><strong>Confidence Score:</strong> {fire.confidence_score.toFixed(1)}%</p>
-                )}
-                <p><strong>Source:</strong> {fire.primary_sensor}</p>
-                <p><strong>Date:</strong> {fire.acq_date}</p>
-                <p><strong>Time:</strong> {formatFireTimeUTC(fire)}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {filteredFires.map((fire, index) => {
+          // Ensure coordinates are valid numbers - use explicit Number() conversion
+          const lat = Number(fire.latitude);
+          const lng = Number(fire.longitude);
+          
+          // Safety check: only render Marker if both coordinates are valid numbers
+          if (isNaN(lat) || isNaN(lng)) {
+            return null;
+          }
+          
+          // Validate coordinates are within valid geographic bounds
+          if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return null;
+          }
+          
+          // Leaflet Marker position must be [latitude, longitude] array with valid numbers
+          const markerPosition = [Number(lat), Number(lng)];
+          
+          return (
+            <Marker
+              key={`${lat}-${lng}-${index}`}
+              position={markerPosition}
+              icon={createFireIcon(fire.confidence_level)}
+            >
+              <Popup className="custom-popup">
+                <div className="popup-content">
+                  <h3>{currentViewMode === 'raw' ? '📡 Raw Sensor Detection' : '🔥 Validated Fire'}</h3>
+                  <p style={{ textAlign: "right" }}><strong>Location:</strong> {lat.toFixed(4)}, {lng.toFixed(4)}</p>
+                  {fire.confidence_score !== null && fire.confidence_score !== undefined && (
+                    <p><strong>Confidence Score:</strong> {fire.confidence_score.toFixed(1)}%</p>
+                  )}
+                  <p><strong>Source:</strong> {fire.primary_sensor}</p>
+                  <p><strong>Date:</strong> {fire.acq_date}</p>
+                  <p><strong>Time:</strong> {formatFireTimeUTC(fire)}</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
         <MapZoomHandler onMapReady={setMapInstance} />
       </MapContainer>
 

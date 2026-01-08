@@ -2,9 +2,19 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from firms_data_collector_v2 import init_all_dbs, fetch_firms, SENSORS
+from firms_data_collector_v2 import init_all_dbs, SENSORS, initialize_db_viirs, initialize_db_modis, initialize_db_landsat
 from fire_alert_validator import validate_fires, initialize_validated_db
 from datetime import datetime, timezone
+
+# Centralize path logic
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Standardize DB paths
+VALIDATED_DB = os.path.join(BASE_DIR, "validated_fires.db")
+VIIRS_DB = os.path.join(BASE_DIR, "viirs.db")
+MODIS_DB = os.path.join(BASE_DIR, "modis.db")
+LANDSAT_DB = os.path.join(BASE_DIR, "landsat.db")
+GOES_DB = os.path.join(BASE_DIR, "goes.db")
 
 # Load .env file from fire-map-frontend folder
 env_path = Path(__file__).parent.parent / 'frontend' / 'fire-map-frontend' / '.env'
@@ -15,19 +25,23 @@ DEFAULT_BBOX = os.getenv('REACT_APP_DEFAULT_BBOX')
 if not DEFAULT_BBOX:
     raise ValueError("REACT_APP_DEFAULT_BBOX must be set in .env file")
 
-# Define which sensor is primary (used for alert validation) and secondary
-PRIMARY = ("viirs.db", "viirs_noaa20")
+# Define ONLY ONE VIIRS sensor as primary source
+# Use absolute paths for database files
+VIIRS_PRIMARY_SENSORS = [
+    (VIIRS_DB, "viirs_noaa20")
+]
+
+# Secondary sources: MODIS, Landsat, GOES, and the other two VIIRS sensors as cross-checks
 SECONDARY = [
-    ("modis.db", "modis_data"),
-    ("viirs.db", "viirs_snpp"),
-    ("viirs.db", "viirs_noaa21"),
-    ("landsat.db", "landsat_data"),
-    ("goes.db", "goes_data")
+    (MODIS_DB, "modis_data"),
+    (LANDSAT_DB, "landsat_data"),
+    (GOES_DB, "goes_data"),
+    (VIIRS_DB, "viirs_noaa21"),  # VIIRS cross-check
+    (VIIRS_DB, "viirs_snpp")     # VIIRS cross-check
 ]
 
 # Get the list of all tables and the validated table
 ALL_TABLES = [(db, table) for _, db, table in SENSORS]
-VALIDATED_DB = "validated_fires.db"
 VALIDATED_TABLE = "validated_fires"
 
 # Track the last BBOX used - stored in a file to persist across runs
@@ -52,31 +66,13 @@ def save_current_bbox_to_file(bbox_str):
 CURRENT_BBOX_IN_DB = get_current_bbox_from_file() or DEFAULT_BBOX
 
 
-def clear_all_data():
+def clear_validated_data():
     """
-    Connects to every database and deletes all data from every table.
-    This is critical when the Area of Interest changes, OR when the AOI is reset to empty.
+    Clear only the validated fires database when BBOX changes.
+    In demo mode, we don't clear raw databases (they contain pre-seeded data).
     """
-    print("--- New BBOX or AOI reset detected. Clearing all old data... ---")
+    print("--- New BBOX detected. Clearing validated fires... ---")
     
-    # Get a unique list of all databases
-    all_dbs = set([db for db, _ in ALL_TABLES])
-    
-    for db_name in all_dbs:
-        try:
-            con = sqlite3.connect(db_name)
-            cur = con.cursor()
-            # Find all tables in this DB that we manage
-            tables_to_clear = [table for db, table in ALL_TABLES if db == db_name]
-            for table in tables_to_clear:
-                print(f"Clearing table: {table} in {db_name}")
-                cur.execute(f"DELETE FROM {table}")
-            con.commit()
-            con.close()
-        except Exception as e:
-            print(f"Error clearing {db_name}: {e}")
-
-    # Also clear the validated fires database
     try:
         con = sqlite3.connect(VALIDATED_DB)
         cur = con.cursor()
@@ -84,51 +80,86 @@ def clear_all_data():
         cur.execute(f"DROP TABLE IF EXISTS {VALIDATED_TABLE}")
         con.commit()
         con.close()
+        print("--- Validated fires cleared. ---")
     except Exception as e:
         print(f"Error clearing {VALIDATED_DB}: {e}")
-    
-    print("--- All databases cleared. ---")
 
 
 def run_pipeline(bbox_str=None):
     """
-    Runs the full data pipeline.
-    If 'bbox_str' is provided and is different from the last run,
-    it will wipe all databases before fetching new data.
+    Demo mode pipeline: Query raw databases for points inside BBOX, then validate fires.
+    No API fetching - works with pre-seeded demo data.
+    
+    When bbox_str is provided, queries viirs.db, modis.db, and landsat.db
+    for any points that fall inside the bbox_str coordinates (lon_min,lat_min,lon_max,lat_max),
+    then runs validate_fires on that filtered subset.
     """
     global CURRENT_BBOX_IN_DB
+    
+    # HARD RESET: Initialize table first, then clear it safely
+    print("HARD RESET: Initializing validated_fires table...")
+    initialize_validated_db()
+    
+    # HARD RESET: Clear validated_fires table ONCE at the very top before any processing
+    print("HARD RESET: Clearing validated_fires table at pipeline start...")
+    try:
+        conn = sqlite3.connect(VALIDATED_DB)
+        conn.execute("DELETE FROM validated_fires")
+        conn.commit()
+        conn.close()
+        print("HARD RESET: Validated fires table cleared.")
+    except sqlite3.OperationalError as e:
+        # If table doesn't exist, ignore error (it will be empty anyway after initialization)
+        if "no such table" in str(e).lower():
+            print(f"HARD RESET: Table doesn't exist yet (will be created), proceeding...")
+        else:
+            print(f"HARD RESET: Error clearing table: {e}, proceeding anyway...")
+    except Exception as e:
+        print(f"HARD RESET: Unexpected error clearing table: {e}, proceeding anyway...")
     
     # Use the provided BBOX or fall back to the empty default
     new_bbox = bbox_str or DEFAULT_BBOX
     
     print(f"--- Pipeline started at {datetime.now(timezone.utc).isoformat()} ---")
-    print(f"Target BBOX: {'(EMPTY - NO FETCH)' if not new_bbox else new_bbox}")
+    print(f"Target BBOX: {'(EMPTY - NO FILTER)' if not new_bbox else new_bbox}")
+    
+    # Robust table initialization - ensure tables exist even if files were deleted
+    print("Initializing all database tables...")
+    initialize_validated_db()
+    initialize_db_viirs()
+    initialize_db_modis()
+    initialize_db_landsat()
     
     # --- BBOX CHANGE DETECTION & CLEARING LOGIC ---
     if new_bbox != CURRENT_BBOX_IN_DB:
-        clear_all_data()
+        clear_validated_data()
         CURRENT_BBOX_IN_DB = new_bbox
         save_current_bbox_to_file(new_bbox)
         print(f"BBOX changed. Updated to: {'(EMPTY)' if not new_bbox else new_bbox}")
     else:
-        print("BBOX is unchanged. Performing standard sync.")
+        print("BBOX is unchanged.")
     
+    # --- BBOX FILTERING AND VALIDATION ---
     
-    # Ensure all tables exist (harmless to run)
-    init_all_dbs()
-    initialize_validated_db()
+    # Use only ONE VIIRS sensor as primary (others act as cross-checks in secondary)
+    primary_db, primary_table = VIIRS_PRIMARY_SENSORS[0]
+    print(f"\n--- Validating fires using {primary_table} as primary sensor... ---")
+    print(f"Secondary sources: {[tbl for _, tbl in SECONDARY]}")
     
-    # --- CONDITIONAL FETCH: Only fetch if a BBOX is provided/set ---
     if new_bbox:
-        # Step 1: Fetch new data using the *new_bbox*
-        for sensor, db, table in SENSORS:
-            # fetch_firms will now skip if new_bbox is empty
-            fetch_firms(sensor, db, table, new_bbox) 
-
-        # Step 2: Validate fires
-        validate_fires(PRIMARY[0], PRIMARY[1], SECONDARY)
+        # Validate fires with BBOX filtering (filtering happens during load_detections)
+        validate_fires(primary_db, primary_table, SECONDARY, bbox=new_bbox)
     else:
-        print("BBOX is empty. Skipping data fetch and validation.")
+        # No BBOX: validate all data
+        validate_fires(primary_db, primary_table, SECONDARY)
+    
+    # Get final count
+    con_final = sqlite3.connect(VALIDATED_DB)
+    cur_final = con_final.cursor()
+    cur_final.execute("SELECT COUNT(*) FROM validated_fires")
+    count_final = cur_final.fetchone()[0]
+    con_final.close()
+    print(f"Total fires validated: {count_final}")
 
     print(f"--- Pipeline finished at {datetime.now(timezone.utc).isoformat()} ---\n")
 
