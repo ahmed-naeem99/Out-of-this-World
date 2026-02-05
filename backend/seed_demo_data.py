@@ -3,10 +3,7 @@ import pandas as pd
 import os
 from pathlib import Path
 from datetime import datetime, timezone
-from firms_data_collector_v2 import (
-    init_all_dbs,
-    SENSORS
-)
+from firms_data_collector_v2 import init_all_dbs, SENSORS
 
 # Centralize path logic
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -17,8 +14,7 @@ MODIS_DB = os.path.join(BASE_DIR, "modis.db")
 LANDSAT_DB = os.path.join(BASE_DIR, "landsat.db")
 GOES_DB = os.path.join(BASE_DIR, "goes.db")
 
-# Mapping CSV files to their intended DB tables
-# Make sure the file names match your local files exactly
+# Mapping CSV files
 CSV_MAPPING = [
     ("demo_data/viirs_snpp.csv", VIIRS_DB, "viirs_snpp", "VIIRS_SNPP_NRT"),
     ("demo_data/viirs_noaa20.csv", VIIRS_DB, "viirs_noaa20", "VIIRS_NOAA20_NRT"),
@@ -27,8 +23,32 @@ CSV_MAPPING = [
     ("demo_data/landsat_data.csv", LANDSAT_DB, "landsat_data", "LANDSAT_NRT"),
 ]
 
+# --- SYNTHETIC DEMO DATA (Guarantees the Demo Logic Works) ---
+# We inject these specifically to test the Scoring Logic (Veto, Bonus, etc.)
+SYNTHETIC_DATA = {
+    "viirs_noaa20": [
+        # Cluster A: Confirmed Fire (High Confidence + 3 Pass Bonus)
+        {"lat": 59.123, "lon": -111.456, "conf": "h", "date": "2025-08-17", "time": "1430"},
+        # Cluster B: Static Veto Test (Near Oil Sands - Should be filtered/gray)
+        {"lat": 57.001, "lon": -111.401, "conf": "h", "date": "2025-08-17", "time": "1435"},
+        # Cluster C: Noise (Low Confidence - Should be filtered/gray)
+        {"lat": 61.500, "lon": -120.000, "conf": "l", "date": "2025-08-17", "time": "1440"},
+    ],
+    "viirs_snpp": [
+        # Cluster A: Cross-check (Nominal)
+        {"lat": 59.124, "lon": -111.457, "conf": "n", "date": "2025-08-17", "time": "1432"},
+    ],
+    "viirs_noaa21": [
+        # Cluster A: Third pass (Nominal) - TRIGGERS 25% BONUS
+        {"lat": 59.122, "lon": -111.455, "conf": "n", "date": "2025-08-17", "time": "1438"},
+    ],
+    "modis_data": [
+        # Cluster A: Cross-check (High Numeric)
+        {"lat": 59.120, "lon": -111.460, "conf": "85", "date": "2025-08-17", "time": "1430"},
+    ]
+}
+
 def get_table_columns(db_path, table_name):
-    """Retrieve the list of column names from the SQLite table."""
     con = sqlite3.connect(db_path)
     cur = con.cursor()
     cur.execute(f"PRAGMA table_info({table_name})")
@@ -39,107 +59,93 @@ def get_table_columns(db_path, table_name):
 def load_csv_to_table(csv_path, db_name, table_name, sensor_label):
     csv_file = Path(csv_path)
     if not csv_file.exists():
-        print(f"WARNING: CSV file not found: {csv_path}")
+        print(f"WARNING: CSV file not found: {csv_path} (Skipping)")
         return
 
     print(f"Processing {csv_path}...")
-    
     try:
-        # 1. Read CSV (NASA acq_time is often an int, force to string)
         df = pd.read_csv(csv_path, dtype={'acq_time': str})
         
-        # 2. Filter to ONLY August 17, 2025 data (discard Aug 10-16)
-        if 'acq_date' in df.columns:
-            before_count = len(df)
-            df = df[df['acq_date'] == '2025-08-17']
-            after_count = len(df)
-            print(f"  Filtered to August 17 only: {before_count} -> {after_count} rows")
+        # --- CHANGED: REMOVED STRICT DATE FILTER ---
+        # We allow all data so the DB isn't empty. The Validator handles date logic if needed.
+        # if 'acq_date' in df.columns:
+        #     df = df[df['acq_date'] == '2025-08-17']
         
-        # 3. Add Required Metadata Columns that aren't in NASA's raw CSV
         df['sensor'] = sensor_label
         df['acquired_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-        # 4. Clean up acq_time (ensure 4 digits like '0945')
         if 'acq_time' in df.columns:
             df['acq_time'] = df['acq_time'].str.zfill(4)
 
-        # 5. Filter to match DB schema
-        # This prevents the "no column named X" error
         db_columns = get_table_columns(db_name, table_name)
-        
-        # Keep only columns that exist in BOTH the CSV and the Database
         valid_columns = [col for col in df.columns if col in db_columns]
         df_final = df[valid_columns].copy()
 
-        # CRITICAL FIX: Remove duplicates based on Primary Key before SQL insertion
-        # Landsat uses 6-column primary key (includes scan and track)
-        # Other tables use 4-column primary key
         if table_name == 'landsat_data':
             pk_cols = ['latitude', 'longitude', 'acq_date', 'acq_time', 'scan', 'track']
         else:
             pk_cols = ['latitude', 'longitude', 'acq_date', 'acq_time']
         
         if all(col in df_final.columns for col in pk_cols):
-            before_count = len(df_final)
             df_final = df_final.drop_duplicates(subset=pk_cols, keep='first')
-            after_count = len(df_final)
-            if before_count != after_count:
-                print(f"  Removed {before_count - after_count} primary key duplicates from CSV")
 
-        # 6. Connect and Reset Table
         con = sqlite3.connect(db_name)
         cur = con.cursor()
         
-        # For Landsat, drop and recreate table to ensure schema matches (6-column primary key)
-        # For other tables, just clear data
-        if table_name == 'landsat_data':
-            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-            # Recreate with correct schema (6-column primary key)
-            cur.execute('''
-                CREATE TABLE landsat_data (
-                    latitude REAL,
-                    longitude REAL,
-                    path TEXT,
-                    row TEXT,
-                    scan REAL,
-                    track REAL,
-                    acq_date TEXT,
-                    acq_time TEXT,
-                    satellite TEXT,
-                    confidence TEXT,
-                    daynight TEXT,
-                    sensor TEXT,
-                    acquired_at TEXT,
-                    PRIMARY KEY (latitude, longitude, acq_date, acq_time, scan, track)
-                )
-            ''')
-            print(f"  Recreated {table_name} with 6-column primary key")
-        else:
-            cur.execute(f"DELETE FROM {table_name}") # Clear existing data
-        
+        # Don't drop tables here, or we lose the init work. Just clear.
+        if table_name != 'landsat_data':
+            cur.execute(f"DELETE FROM {table_name}")
+            
         con.commit()
-
-        # 7. Load Data
         df_final.to_sql(table_name, con, if_exists='append', index=False, chunksize=500)
         con.commit()
         
-        final_count = pd.read_sql_query(f"SELECT COUNT(*) as count FROM {table_name}", con)['count'][0]
-        print(f"  SUCCESS: Loaded {final_count} rows into {table_name}")
+        count = pd.read_sql_query(f"SELECT COUNT(*) as count FROM {table_name}", con)['count'][0]
+        print(f"  -> Loaded {count} rows from CSV.")
         con.close()
 
     except Exception as e:
         print(f"  ERROR processing {csv_path}: {e}")
 
-def seed_demo():
-    print("=== STARTING STATIC DEMO SEEDING ===")
+def inject_synthetic_data():
+    print("\n--- INJECTING SYNTHETIC DEMO DATA ---")
+    # This guarantees the "Oil Sands" and "Confirmed Fire" logic works even if CSVs are empty
     
-    # Step 1: Initialize the DBs to create the tables
-    init_all_dbs()
-    print("Databases initialized.")
+    for table, rows in SYNTHETIC_DATA.items():
+        if "viirs" in table: db = VIIRS_DB
+        elif "modis" in table: db = MODIS_DB
+        else: continue
+            
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        print(f"  Injecting {len(rows)} test rows into {table}...")
+        
+        for row in rows:
+            # Upsert logic to ensure we don't duplicate if run multiple times
+            # (Using a simplified INSERT OR REPLACE)
+            cur.execute(f"""
+                INSERT OR REPLACE INTO {table} 
+                (latitude, longitude, acq_date, acq_time, confidence, acquired_at) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (row['lat'], row['lon'], row['date'], row['time'], row['conf'], 
+                  f"{row['date']}T{row['time'][:2]}:{row['time'][2:]}:00"))
+        
+        con.commit()
+        con.close()
+    print("--- SYNTHETIC INJECTION COMPLETE ---\n")
 
-    # Step 2: Load each CSV
+def seed_demo():
+    print("=== STARTING HYBRID SEEDING ===")
+    
+    # 1. Initialize DBs
+    init_all_dbs()
+    
+    # 2. Try to load CSVs (if they exist)
     for csv_path, db_name, table_name, sensor_label in CSV_MAPPING:
         load_csv_to_table(csv_path, db_name, table_name, sensor_label)
+
+    # 3. Inject Synthetic Data (The Backup Plan)
+    inject_synthetic_data()
 
     print("=== SEEDING COMPLETE ===")
 
