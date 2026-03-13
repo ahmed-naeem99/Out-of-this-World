@@ -12,12 +12,19 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-// Create fire icons...
+// Create fire icons (UPDATED FOR LEVELS 1-3)
 const createFireIcon = (confidence) => {
-  const colors = ['#FFD700', '#FFA500', '#FF4500', '#FF0000'];
-  const sizes = [20, 24, 28, 32];
-  const color = colors[confidence - 1] || 'gray';
-  const size = sizes[confidence - 1] || 24;
+  // Level 1 (40-60): Orange
+  // Level 2 (60-85): Dark Orange
+  // Level 3 (85+): Red
+  const colors = ['#FFA500', '#FF4500', '#FF0000']; 
+  const sizes = [22, 26, 30]; 
+  
+  // Array index is level - 1 (e.g. Level 1 -> index 0)
+  const index = Math.max(0, Math.min(confidence - 1, 2));
+  
+  const color = colors[index];
+  const size = sizes[index];
   const anchor = size / 2; 
   
   return L.divIcon({
@@ -38,11 +45,9 @@ const createFireIcon = (confidence) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Parse DEFAULT_BBOX from .env file
 const parseBboxFromEnv = () => {
   const bboxStr = process.env.REACT_APP_DEFAULT_BBOX;
   if (!bboxStr) {
-    // Return a safe default if env is missing to prevent crash
     return { latMin: "40", latMax: "90", lonMin: "-141", lonMax: "-52" };
   }
   const [lonMin, latMin, lonMax, latMax] = bboxStr.split(',').map(v => v.trim());
@@ -51,8 +56,6 @@ const parseBboxFromEnv = () => {
 
 const DEFAULT_MAP_BBOX = parseBboxFromEnv();
 
-// --- HELPER: Safely Format Numbers ---
-// This prevents the "toFixed of null" error
 const safeToFixed = (val, digits = 1) => {
   if (typeof val === 'number' && !isNaN(val)) {
     return val.toFixed(digits);
@@ -60,7 +63,6 @@ const safeToFixed = (val, digits = 1) => {
   return "N/A";
 };
 
-// Component to access map instance for zoom controls
 function ZoomControls({ onZoomIn, onZoomOut }) {
   return (
     <div className="floating-zoom-controls">
@@ -70,7 +72,7 @@ function ZoomControls({ onZoomIn, onZoomOut }) {
   );
 }
 
-// Component to get map instance and expose zoom functions
+// MapZoomHandler: We keep this to get the instance, but we removed the auto-zoom useEffect
 function MapZoomHandler({ onMapReady }) {
   const map = useMap();
   useEffect(() => {
@@ -104,8 +106,9 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
   const [updateStatus, setUpdateStatus] = useState('idle'); 
   const [aoiInputs, setAoiInputs] = useState(DEFAULT_MAP_BBOX);
   
+  // UPDATED: Default filters for Levels 1, 2, 3
   const [confidenceFilters, setConfidenceFilters] = useState({
-    1: true, 2: true, 3: true, 4: true
+    1: true, 2: true, 3: true
   });
   
   const [timeRange, setTimeRange] = useState('7d'); 
@@ -115,21 +118,14 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false); 
 
   const currentViewMode = initialViewMode;
-
-  // Demo mode: Use fixed date for August 2025 data
   const DEMO_NOW = new Date('2025-08-17T23:59:59Z');
 
   const getSinceParam = () => {
     const DEMO_ANCHOR = new Date('2025-08-10T00:00:00Z');
     let daysToAdd = 0; 
-
-    if (timeRange === 'today') {
-      daysToAdd = 7; 
-    } else if (timeRange === 'daysSlider') {
-      daysToAdd = 7 - daysSlider; 
-    } else {
-      daysToAdd = 0; 
-    }
+    if (timeRange === 'today') daysToAdd = 7; 
+    else if (timeRange === 'daysSlider') daysToAdd = 7 - daysSlider; 
+    else daysToAdd = 0; 
 
     const sinceDate = new Date(DEMO_ANCHOR.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
     const finalDate = sinceDate > DEMO_NOW ? DEMO_NOW : sinceDate;
@@ -140,7 +136,6 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     if (isInitialLoad && !isAoiSet) return;
     
     const endpoint = currentViewMode === 'raw' ? '/api/raw_fires' : '/api/fires';
-    console.log(`Fetching ${currentViewMode} data from ${endpoint}...`);
     setIsLoading(true);
     setError(null);
     
@@ -148,9 +143,6 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     let queryParams = `since=${since}`;
     
     if (currentViewMode === 'raw') {
-      const { latMin, latMax, lonMin, lonMax } = DEFAULT_MAP_BBOX;
-      const bbox_str = `${lonMin},${latMin},${lonMax},${latMax}`;
-      queryParams += `&bbox=${bbox_str}`;
     }
     
     fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${queryParams}`)
@@ -164,16 +156,12 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
         const cleanedFires = fireData.map(fire => {
           const lat = parseFloat(fire.latitude);
           const lng = parseFloat(fire.longitude);
-          
           if (isNaN(lat) || isNaN(lng)) return null;
           
-          // SAFETY FIX: Force confidence_score to be a number or null
           let safeScore = null;
           if (fire.confidence_score !== undefined && fire.confidence_score !== null) {
             const parsedScore = parseFloat(fire.confidence_score);
-            if (!isNaN(parsedScore)) {
-              safeScore = parsedScore;
-            }
+            if (!isNaN(parsedScore)) safeScore = parsedScore;
           }
 
           return {
@@ -183,7 +171,7 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
             latitude: lat,
             longitude: lng,
             timestamp: new Date(fire.datetime).getTime(),
-            confidence_score: safeScore // Safely normalized
+            confidence_score: safeScore 
           };
         }).filter(fire => fire !== null);
         
@@ -208,11 +196,10 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
       .filter(level => confFilters[level])
       .map(level => parseInt(level));
     
-    if (activeConfidenceLevels.length < 4) {
-        filtered = filtered.filter(fire => 
-            activeConfidenceLevels.includes(fire.confidence_level)
-        );
-    }
+    // Filter fires based on whether their level (1, 2, 3) is active
+    filtered = filtered.filter(fire => 
+        activeConfidenceLevels.includes(fire.confidence_level)
+    );
     setFilteredFires(filtered);
   };
 
@@ -241,30 +228,9 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     // eslint-disable-next-line
   }, [allFires, confidenceFilters]);
 
-  // Auto-zoom map
-  useEffect(() => {
-    if (mapInstance && mapInstance._container && filteredFires.length > 0) {
-      const bounds = filteredFires
-        .map(fire => {
-          if (!isNaN(fire.lat) && !isNaN(fire.lng)) return [fire.lat, fire.lng];
-          return null;
-        })
-        .filter(coord => coord !== null);
-
-      if (bounds.length > 0) {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            if (mapInstance && mapInstance._container) {
-              try {
-                const latlngBounds = L.latLngBounds(bounds);
-                mapInstance.fitBounds(latlngBounds, { padding: [50, 50], maxZoom: 10 });
-              } catch (e) {}
-            }
-          }, 100);
-        });
-      }
-    }
-  }, [filteredFires, mapInstance]);
+  // --- CHANGED: REMOVED AUTO-ZOOM useEffect ---
+  // We deleted the useEffect that called mapInstance.fitBounds on filteredFires change.
+  // The map will now stay exactly where you position it.
 
   const toggleConfidenceFilter = (level) => {
     setConfidenceFilters(prev => ({ ...prev, [level]: !prev[level] }));
@@ -356,15 +322,26 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
     setBasemapMenuOpen(false);
   };
 
-  const formatFireTimeUTC = (fire) => {
-    if (!fire.acq_time || !fire.acq_date) return 'N/A';
-    const acqTimeStr = fire.acq_time.toString().padStart(4, '0');
-    const hours = parseInt(acqTimeStr.slice(0, 2));
-    const minutes = parseInt(acqTimeStr.slice(2, 4));
-    const [year, month, day] = fire.acq_date.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day, hours, minutes));
-    if (isNaN(date)) return 'Invalid time';
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' }) + ' UTC';
+  const formatFireDateTimeUTC = (fire) => {
+    // Prefer acquisition date/time when available, otherwise fall back to datetime/timestamp
+    let dateObj = null;
+    if (fire.acq_time && fire.acq_date) {
+      const acqTimeStr = fire.acq_time.toString().padStart(4, '0');
+      const hours = parseInt(acqTimeStr.slice(0, 2));
+      const minutes = parseInt(acqTimeStr.slice(2, 4));
+      const [year, month, day] = fire.acq_date.split('-').map(Number);
+      dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+    } else if (fire.datetime) {
+      dateObj = new Date(fire.datetime);
+    } else if (fire.timestamp) {
+      dateObj = new Date(fire.timestamp);
+    }
+
+    if (!dateObj || isNaN(dateObj)) return 'N/A';
+
+    const dateStr = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' });
+    return `${dateStr} — ${timeStr} UTC`;
   };
 
   if (isLoading && allFires.length === 0 && isAoiSet) {
@@ -411,7 +388,6 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
         )}
 
         {filteredFires.map((fire, index) => {
-          // SAFETY FIX: Check for NaNs before rendering
           if (isNaN(fire.lat) || isNaN(fire.lng)) return null;
 
           return (
@@ -422,26 +398,27 @@ function MapComponent({ viewMode: initialViewMode = 'validated' }) {
              >
               <Popup className="custom-popup">
                  <div className="popup-content">
-                   <h3>
-                     {fire.confidence_level === 1 ? '⚪ Filtered Noise' :
-                      fire.confidence_level === 4 ? '🔥 Confirmed Fire' : 
-                      '⚠️ Active Alert'}
-                   </h3>
+                   {/* UPDATED POPUP LOGIC */}
+                   {currentViewMode === 'raw' ? (
+                     <h3>Raw Satellite Detection</h3>
+                   ) : (
+                     <h3>
+                       {fire.confidence_level === 1 ? 'Moderate (40-60%)' :
+                        fire.confidence_level === 2 ? 'High (60-85%)' : 
+                        'Severe (85%+)'}
+                     </h3>
+                   )}
+                   
                    <p style={{ textAlign: "right" }}><strong>Location:</strong> {safeToFixed(fire.lat, 4)}, {safeToFixed(fire.lng, 4)}</p>
                    
-                   {/* CRITICAL SAFETY FIX FOR .toFixed() ERROR */}
                    {typeof fire.confidence_score === 'number' && (
                      <p><strong>Score:</strong> {safeToFixed(fire.confidence_score, 1)}%</p>
                    )}
-
-                   {fire.confidence_level === 1 && <p style={{color:'red'}}><em>(Below Confidence Threshold)</em></p>}
-                   <p><strong>Primary:</strong> {fire.primary_sensor}</p>
-                   <p><strong>Validating:</strong> {fire.validating_sensors || "None"}</p>
-                   <p><strong>Time:</strong> {formatFireTimeUTC(fire)}</p>
+                   <p><strong>Date & Time:</strong> {formatFireDateTimeUTC(fire)}</p>
                  </div>
                </Popup>
             </Marker>
-          );
+          )
         })}
         <MapZoomHandler onMapReady={setMapInstance} />
       </MapContainer>

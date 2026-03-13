@@ -7,7 +7,6 @@ const SidebarPanel = ({
   confidenceFilters, 
   toggleConfidenceFilter,
   // --- Time Props ---
-  // We ignore 'timeRange' prop for logic now, we just use daysSlider as truth
   handleTimeRangeChange, // function(mode, days)
   daysSlider,            // number (1-7)
   handleDaysSliderChange,// function(e)
@@ -21,20 +20,16 @@ const SidebarPanel = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isBusy = updateStatus !== 'idle';
   
-  // 1. Calculate gradient for the slider track
   const sliderPercentage = ((daysSlider - 1) / 6) * 100;
 
   const sliderStyle = {
     background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) 100%)`
   };
 
-  // 2. Simplified Handler: Buttons just set the slider value
   const setSliderViaButton = (days) => {
-    // We strictly tell the parent: "The mode is 'daysSlider' and the value is X"
     handleTimeRangeChange('daysSlider', days);
   };
 
-  // 3. Determine if we are in a "preset" state (1 or 7) for styling
   const isToday = daysSlider === 1;
   const is7Days = daysSlider === 7;
   const isPresetActive = isToday || is7Days;
@@ -73,13 +68,11 @@ const SidebarPanel = ({
             <div className="panel-section">
               <h3>Time Range</h3>
               
-              {/* Buttons acting as Shortcuts */}
               <div className="time-filter">
                 <div 
                   className={`time-option ${isToday ? 'active' : ''}`}
                   onClick={() => setSliderViaButton(1)}
                 >
-                  
                   <span className="time-label">Today</span>
                 </div>
 
@@ -87,13 +80,10 @@ const SidebarPanel = ({
                   className={`time-option ${is7Days ? 'active' : ''}`}
                   onClick={() => setSliderViaButton(7)}
                 >
-                  
                   <span className="time-label">Last 7 Days</span>
                 </div>
               </div>
               
-              {/* Slider Section */}
-              {/* We apply 'passive-mode' if a preset (1 or 7) is selected to dim it slightly */}
               <div className={`days-slider-container ${isPresetActive ? 'passive-mode' : ''}`}>
                 <label>
                   {isToday ? 'Showing Today' : 
@@ -107,9 +97,7 @@ const SidebarPanel = ({
                   max="7" 
                   value={daysSlider}
                   style={sliderStyle}
-                  // If user drags manually, it works normally
                   onChange={handleDaysSliderChange}
-                  // Ensure on release we confirm the 'daysSlider' mode
                   onMouseUp={() => handleTimeRangeChange('daysSlider', daysSlider)}
                   className={`days-slider ${!isPresetActive ? 'active' : ''}`}
                 />
@@ -121,11 +109,11 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* Confidence Levels */}
+            {/* Confidence Levels (UPDATED TO 1-3) */}
             <div className="panel-section">
               <h3>Confidence Level</h3>
               <div className="confidence-filter">
-                {[1, 2, 3, 4].map(level => (
+                {[1, 2, 3].map(level => (
                   <div 
                     key={level}
                     className={`confidence-toggle ${confidenceFilters[level] ? 'active' : ''}`}
@@ -139,10 +127,9 @@ const SidebarPanel = ({
                       <span className="confidence-label">Level {level}</span>
                     </div>
                     <div className="confidence-desc">
-                      {level === 1 && 'Low'}
-                      {level === 2 && 'Medium'}
-                      {level === 3 && 'High'}
-                      {level === 4 && 'Very High'}
+                      {level === 1 && 'Level 1 (40-60%)'}
+                      {level === 2 && 'Level 2 (60-85%)'}
+                      {level === 3 && 'Level 3 (85+%)'}
                     </div>
                   </div>
                 ))}
