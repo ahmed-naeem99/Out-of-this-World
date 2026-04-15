@@ -26,3 +26,14 @@ yarn-error.log*
 
 venv/
 *.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Server state
+current_bbox.txt
+
+# Raw analysis data (large files, not source code)
+analysis_data/

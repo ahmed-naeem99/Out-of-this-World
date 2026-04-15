@@ -131,4 +131,6 @@ def status():
     return jsonify({"status": "online"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5001))
+    print(f"Starting Main API Server on http://0.0.0.0:{port}")
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
