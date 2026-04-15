@@ -3,9 +3,12 @@ import sqlite3
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
 
 # Centralize path logic
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # Standardize DB paths
 MODIS_DB = os.path.join(BASE_DIR, "modis.db")
@@ -13,9 +16,7 @@ VIIRS_DB = os.path.join(BASE_DIR, "viirs.db")
 LANDSAT_DB = os.path.join(BASE_DIR, "landsat.db")
 GOES_DB = os.path.join(BASE_DIR, "goes.db")
 
-# Define all variables
-
-MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
+MAP_KEY = os.environ["FIRMS_MAP_KEY"]
 DAYS = str(7)  # Last n day of data from 1-10
 
 def initialize_db_modis():
