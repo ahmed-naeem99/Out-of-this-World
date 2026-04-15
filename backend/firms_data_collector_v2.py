@@ -1,11 +1,13 @@
 import pandas as pd
 import sqlite3
+import os
 import time
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
 
-# Define all variables
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-MAP_KEY = "d44b3f3aef34095690bdb6bb00c539e6"
+MAP_KEY = os.environ["FIRMS_MAP_KEY"]
 DAYS = str(7)  # Last n day of data from 1-10
 
 def initialize_db_modis():
