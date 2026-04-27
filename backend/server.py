@@ -35,15 +35,13 @@ def normalize_confidence(conf_val):
 
 @app.route('/api/raw_fires')
 def get_raw_fires():
-    # Allow dynamic BBOX for raw fires if provided, otherwise default to AB/SK
-    bbox_param = request.args.get('bbox')
-    
+    bbox_param  = request.args.get('bbox')
+    since_param = request.args.get('since')
+
     if bbox_param:
         try:
-            parts = [float(x) for x in bbox_param.split(',')]
-            lon_min, lat_min, lon_max, lat_max = parts
+            lon_min, lat_min, lon_max, lat_max = [float(x) for x in bbox_param.split(',')]
         except:
-            # Fallback to defaults
             lat_min, lat_max = AB_SK_BBOX['lat_min'], AB_SK_BBOX['lat_max']
             lon_min, lon_max = AB_SK_BBOX['lon_min'], AB_SK_BBOX['lon_max']
     else:
@@ -51,37 +49,43 @@ def get_raw_fires():
         lon_min, lon_max = AB_SK_BBOX['lon_min'], AB_SK_BBOX['lon_max']
 
     all_raw = []
-    
+
     for sensor_name, db_file, table_name in SENSORS:
         if not os.path.isabs(db_file): db_file = os.path.join(BASE_DIR, db_file)
         if not os.path.exists(db_file): continue
 
         try:
             con = sqlite3.connect(db_file)
-            con.row_factory = sqlite3.Row
             cur = con.cursor()
-            
-            query = f"""SELECT * FROM {table_name} 
-                        WHERE latitude BETWEEN ? AND ? 
-                        AND longitude BETWEEN ? AND ?
-                        ORDER BY acq_date DESC, acq_time DESC
-                        LIMIT 2000"""
-                        
-            cur.execute(query, (lat_min, lat_max, lon_min, lon_max))
-            
-            for r in cur.fetchall():
-                row = dict(r)
+
+            params = [lat_min, lat_max, lon_min, lon_max]
+            since_clause = ""
+            if since_param:
+                since_clause = "AND acq_date >= ?"
+                params.append(since_param[:10])  # compare date portion only
+
+            cur.execute(f"""
+                SELECT latitude, longitude, acq_date, acq_time, confidence
+                FROM {table_name}
+                WHERE latitude BETWEEN ? AND ?
+                AND longitude BETWEEN ? AND ?
+                {since_clause}
+                ORDER BY acq_date DESC, acq_time DESC
+                LIMIT 500
+            """, params)
+
+            for row in cur.fetchall():
                 all_raw.append({
-                    "latitude": row['latitude'],
-                    "longitude": row['longitude'],
-                    "acq_date": row['acq_date'],
-                    "acq_time": row['acq_time'],
-                    "confidence_level": normalize_confidence(row.get('confidence', 'l')),
-                    "primary_sensor": sensor_name, 
-                    "datetime": row.get('acquired_at', row['acq_date']) 
+                    "latitude":         row[0],
+                    "longitude":        row[1],
+                    "acq_date":         row[2],
+                    "acq_time":         row[3],
+                    "confidence_level": normalize_confidence(row[4] or 'l'),
+                    "datetime":         row[2],
                 })
             con.close()
-        except: continue
+        except:
+            continue
 
     return jsonify(all_raw)
 

@@ -357,51 +357,49 @@
   font-weight: 500;
 }
 
-/* Custom fire marker styles */
-.fire-marker-container {
+/* Ping marker — solid core dot + expanding ring */
+.ping-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.ping-wrap {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.fire-icon {
-  filter: drop-shadow(0 0 8px var(--primary));
-  color: var(--primary);
-  z-index: 2;
-  position: relative;
-  animation: flicker 2s infinite alternate;
-}
-
-@keyframes flicker {
-  0% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 0.9; transform: scale(1); }
-}
-
-.fire-pulse {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+.ping-core {
   border-radius: 50%;
-  background-color: var(--secondary);
-  opacity: 0.6;
-  z-index: 1;
-  animation: pulse 2s infinite;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.5); opacity: 0.0; }
-  100% { transform: scale(1); opacity: 0.6; }
+.ping-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid;
+  opacity: 0;
+  animation: ping-expand 2.4s ease-out infinite;
+  pointer-events: none;
 }
 
-.leaflet-marker-icon {
-  transition: transform 0.3s ease;
+/* Cluster rings animate a bit slower to feel more "heavy" */
+.ping-cluster .ping-ring {
+  animation-duration: 3s;
+  border-width: 2px;
 }
 
-.leaflet-marker-icon:hover {
-  transform: scale(1.2);
+@keyframes ping-expand {
+  0%   { transform: scale(0.4); opacity: 0.7; }
+  80%  { transform: scale(1);   opacity: 0.15; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+
+.leaflet-marker-icon:hover .ping-core {
+  filter: brightness(1.2);
 }
 
 /* Attribution styling */
@@ -418,4 +416,12 @@
   background: var(--panel-bg);
   border-right: 1px solid var(--border-color);
   color: var(--text-main);
+}
+
+/* Hide default leaflet cluster circle/number — our ping-icon replaces it entirely */
+.marker-cluster {
+  background: transparent !important;
+}
+.marker-cluster div {
+  display: none !important;
 }

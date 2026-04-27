@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './SidebarPanel.css';
 
-const SidebarPanel = ({ 
-  fireCount, 
-  totalFireCount, 
-  confidenceFilters, 
+const SidebarPanel = ({
+  fireCount,
+  totalFireCount,
+  confidenceFilters,
   toggleConfidenceFilter,
-  // --- Time Props ---
-  handleTimeRangeChange, // function(mode, days)
-  daysSlider,            // number (1-7)
-  handleDaysSliderChange,// function(e)
-  // --- AOI Props ---
+  daysSlider,
+  onDaysCommit,
   handleUpdateAOI,
   updateStatus,
   aoiInputs,
@@ -18,30 +15,29 @@ const SidebarPanel = ({
   handleClearAndResetAOI,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // localDays tracks the visual slider position during drag without triggering a fetch
+  const [localDays, setLocalDays] = useState(daysSlider);
+
+  // Sync visual state when parent commits a new value (e.g. button click)
+  useEffect(() => { setLocalDays(daysSlider); }, [daysSlider]);
+
   const isBusy = updateStatus !== 'idle';
-  
-  const sliderPercentage = ((daysSlider - 1) / 6) * 100;
-
+  const sliderPercentage = ((localDays - 1) / 6) * 100;
   const sliderStyle = {
-    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) 100%)`
+    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) ${sliderPercentage}%, rgba(184, 180, 180, 0.2) 100%)`,
   };
 
-  const setSliderViaButton = (days) => {
-    handleTimeRangeChange('daysSlider', days);
-  };
-
-  const isToday = daysSlider === 1;
-  const is7Days = daysSlider === 7;
-  const isPresetActive = isToday || is7Days;
+  const isToday  = daysSlider === 1;
+  const is7Days  = daysSlider === 7;
+  const isPreset = isToday || is7Days;
 
   return (
     <div className="sidebar-wrapper">
       <div className={`sidebar-panel ${isCollapsed ? 'collapsed' : ''}`}>
-        
-        {/* Toggle Button */}
-        <button 
+
+        <button
           className="toggle-button"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => setIsCollapsed(c => !c)}
           aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
         >
           <span className={`toggle-icon ${isCollapsed ? 'collapsed' : ''}`}>
@@ -51,7 +47,6 @@ const SidebarPanel = ({
           </span>
         </button>
 
-        {/* Header */}
         <div className="panel-header">
           <h2>FireWatch Analytics</h2>
           {!isCollapsed && (
@@ -63,45 +58,40 @@ const SidebarPanel = ({
 
         {!isCollapsed && (
           <div className="panel-content">
-            
-            {/* Time Range Section */}
+
             <div className="panel-section">
               <h3>Time Range</h3>
-              
               <div className="time-filter">
-                <div 
+                <div
                   className={`time-option ${isToday ? 'active' : ''}`}
-                  onClick={() => setSliderViaButton(1)}
+                  onClick={() => onDaysCommit(1)}
                 >
                   <span className="time-label">Today</span>
                 </div>
-
-                <div 
+                <div
                   className={`time-option ${is7Days ? 'active' : ''}`}
-                  onClick={() => setSliderViaButton(7)}
+                  onClick={() => onDaysCommit(7)}
                 >
                   <span className="time-label">Last 7 Days</span>
                 </div>
               </div>
-              
-              <div className={`days-slider-container ${isPresetActive ? 'passive-mode' : ''}`}>
+
+              <div className={`days-slider-container ${isPreset ? 'passive-mode' : ''}`}>
                 <label>
-                  {isToday ? 'Showing Today' : 
-                   is7Days ? 'Showing Last 7 Days' : 
-                   `Past ${daysSlider} Days`}
+                  {isToday ? 'Showing Today' :
+                   is7Days ? 'Showing Last 7 Days' :
+                   `Past ${localDays} Days`}
                 </label>
-                
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="7" 
-                  value={daysSlider}
+                <input
+                  type="range"
+                  min="1"
+                  max="7"
+                  value={localDays}
                   style={sliderStyle}
-                  onChange={handleDaysSliderChange}
-                  onMouseUp={() => handleTimeRangeChange('daysSlider', daysSlider)}
-                  className={`days-slider ${!isPresetActive ? 'active' : ''}`}
+                  onChange={e => setLocalDays(parseInt(e.target.value))}
+                  onMouseUp={() => onDaysCommit(localDays)}
+                  className={`days-slider ${!isPreset ? 'active' : ''}`}
                 />
-                
                 <div className="slider-labels">
                   <span>1d</span>
                   <span>7d</span>
@@ -109,12 +99,11 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* Confidence Levels (UPDATED TO 1-3) */}
             <div className="panel-section">
               <h3>Confidence Level</h3>
               <div className="confidence-filter">
                 {[1, 2, 3].map(level => (
-                  <div 
+                  <div
                     key={level}
                     className={`confidence-toggle ${confidenceFilters[level] ? 'active' : ''}`}
                     onClick={() => toggleConfidenceFilter(level)}
@@ -136,72 +125,40 @@ const SidebarPanel = ({
               </div>
             </div>
 
-            {/* Area of Interest */}
             <div className="panel-section">
               <h3>Area of Interest</h3>
               <div className="aoi-form">
                 <div className="form-row">
                   <div className="form-group">
                     <label>Lat Min</label>
-                    <input 
-                      type="number" 
-                      placeholder="53.2" 
-                      name="latMin"
-                      value={aoiInputs.latMin}
-                      onChange={handleAoiInputChange}
-                    />
+                    <input type="number" placeholder="53.2" name="latMin" value={aoiInputs.latMin} onChange={handleAoiInputChange} />
                   </div>
                   <div className="form-group">
                     <label>Lat Max</label>
-                    <input 
-                      type="number" 
-                      placeholder="60.9" 
-                      name="latMax"
-                      value={aoiInputs.latMax}
-                      onChange={handleAoiInputChange}
-                    />
+                    <input type="number" placeholder="60.9" name="latMax" value={aoiInputs.latMax} onChange={handleAoiInputChange} />
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Lon Min</label>
-                    <input 
-                      type="number" 
-                      placeholder="-110.1" 
-                      name="lonMin"
-                      value={aoiInputs.lonMin}
-                      onChange={handleAoiInputChange}
-                    />
+                    <input type="number" placeholder="-110.1" name="lonMin" value={aoiInputs.lonMin} onChange={handleAoiInputChange} />
                   </div>
                   <div className="form-group">
                     <label>Lon Max</label>
-                    <input 
-                      type="number" 
-                      placeholder="-100.5"
-                      name="lonMax"
-                      value={aoiInputs.lonMax}
-                      onChange={handleAoiInputChange}
-                    />
+                    <input type="number" placeholder="-100.5" name="lonMax" value={aoiInputs.lonMax} onChange={handleAoiInputChange} />
                   </div>
                 </div>
                 <div className="form-actions">
-                  <button 
-                    className="apply-btn"
-                    onClick={handleUpdateAOI}
-                    disabled={isBusy}
-                  >
+                  <button className="apply-btn" onClick={handleUpdateAOI} disabled={isBusy}>
                     {updateStatus === 'applying' ? 'Applying...' : 'Apply AOI'}
                   </button>
-                  <button 
-                    className="clear-btn"
-                    onClick={handleClearAndResetAOI}
-                    disabled={isBusy}
-                  >
+                  <button className="clear-btn" onClick={handleClearAndResetAOI} disabled={isBusy}>
                     {updateStatus === 'resetting' ? 'Resetting...' : 'Reset'}
                   </button>
                 </div>
               </div>
             </div>
+
           </div>
         )}
       </div>
